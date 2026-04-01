@@ -361,7 +361,11 @@ if env('SENTRY_DSN'):
 
 # https://github.com/ottoyiu/django-cors-headers
 CORS_ORIGIN_WHITELIST_STR = env('CORS_ORIGIN_WHITELIST')  # type: str
-CORS_ORIGIN_WHITELIST = CORS_ORIGIN_WHITELIST_STR.split(',')
+CORS_ORIGIN_WHITELIST = [
+    o.strip()
+    for o in CORS_ORIGIN_WHITELIST_STR.split(',')
+    if o.strip()
+]
 CORS_ORIGIN_ALLOW_ALL = env('CORS_ORIGIN_ALLOW_ALL')
 
 CORS_ALLOW_HEADERS = list(default_headers)
