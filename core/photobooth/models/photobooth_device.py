@@ -19,10 +19,36 @@ class PhotoboothDevice(models.Model):
         max_length=200,
         help_text='Tên hiển thị; client có thể gửi khi đăng ký hoặc để server dùng tên mặc định.',
     )
+    address = models.CharField(
+        'Địa chỉ',
+        max_length=500,
+        blank=True,
+        default='',
+        help_text='Tùy chọn — nhập tay trong Admin.',
+    )
+    notes = models.TextField(
+        'Thông tin thêm',
+        blank=True,
+        default='',
+        help_text='Ghi chú / mô tả booth — không bắt buộc.',
+    )
     is_active = models.BooleanField(default=True)
     last_seen_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    filters = models.ManyToManyField(
+        'PhotoboothFilter',
+        related_name='devices',
+        blank=True,
+        verbose_name='Filters',
+    )
+    backgrounds = models.ManyToManyField(
+        'PhotoboothBackground',
+        related_name='devices',
+        blank=True,
+        verbose_name='Backgrounds',
+    )
 
     class Meta:
         db_table = 'photobooth_device'
