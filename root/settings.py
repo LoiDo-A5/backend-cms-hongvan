@@ -85,7 +85,8 @@ env = environ.Env(
     VNPAY_HASH_SECRET=(str, ''),
     VNPAY_PAYMENT_URL=(str, 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
     VNPAY_RETURN_URL=(str, ''),
-    VNPAY_DEFAULT_BANK_CODE=(str, 'VNPAYQR'),
+    # Để trống = khách chọn cổng trên trang VNPAY. VNPAYQR chỉ bật khi merchant sandbox đã bật kênh QR; nếu không dễ gặp code 70 (sai chữ ký) tùy cấu hình cổng.
+    VNPAY_DEFAULT_BANK_CODE=(str, ''),
 )
 
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')

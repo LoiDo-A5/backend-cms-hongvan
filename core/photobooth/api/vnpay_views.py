@@ -140,7 +140,8 @@ class VnpayCreatePaymentView(APIView):
 def _make_txn_ref() -> str:
     import secrets
 
-    ts = timezone.localtime(timezone.now()).strftime('%Y%m%d%H%M%S')
+    # Cùng múi giờ với vnp_CreateDate / vnp_ExpireDate (GMT+7). Không dùng TIME_ZONE Django (thường UTC) — tránh PB-...14:02 trong khi CreateDate là 21:02.
+    ts = _now_vietnam().strftime('%Y%m%d%H%M%S')
     suf = secrets.token_hex(4)
     return f'PB-{ts}-{suf}'
 
