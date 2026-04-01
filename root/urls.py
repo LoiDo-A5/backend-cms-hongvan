@@ -15,6 +15,11 @@ from common.views.healthcheck_view import HealthCheckView
 from core.accounts.views.login_view import LoginView
 from django.conf.urls.static import static
 
+# Keep admin branding stable regardless of app auto-discovery import order.
+admin.site.site_header = 'PhotoBooth Admin'
+admin.site.site_title = 'PhotoBooth Admin'
+admin.site.index_title = 'PhotoBooth Admin'
+
 urlpatterns = [
     path('healthcheck/', HealthCheckView.as_view(), name='healthcheck'),
     path('login/', LoginView.as_view(), name='login'),
@@ -35,9 +40,9 @@ urlpatterns = [
 
 schema_view = get_schema_view(
     openapi.Info(
-        title='PhotoBook API',
+        title='PhotoBooth API',
         default_version='v1',
-        description='PhotoBook backend API',
+        description='PhotoBooth backend API',
         terms_of_service='https://www.google.com/policies/terms/',
         contact=openapi.Contact(email='support@example.com'),
         license=openapi.License(name='MIT License'),
