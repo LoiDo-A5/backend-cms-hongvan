@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+from datetime import timezone as dt_timezone
+from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
@@ -22,6 +24,13 @@ from core.photobooth.vnpay import (
 )
 
 logger = logging.getLogger(__name__)
+
+# VNPAY: vnp_CreateDate / vnp_ExpireDate là giờ GMT+7 (tài liệu PAY), không dùng giờ UTC của Django.
+_VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
+
+
+def _now_vietnam():
+    return timezone.now().astimezone(_VN_TZ)
 
 
 def _client_ip(request):
@@ -71,8 +80,10 @@ class VnpayCreatePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        now = timezone.localtime(timezone.now())
-        expires = now + timedelta(minutes=15)
+        now_vn = _now_vietnam()
+        expires_vn = now_vn + timedelta(minutes=15)
+        # Lưu DB theo UTC (USE_TZ) — cùng thời điểm với expires_vn
+        expires_at_utc = expires_vn.astimezone(dt_timezone.utc)
         txn_ref = _make_txn_ref()
 
         order = PaymentOrder.objects.create(
@@ -80,15 +91,15 @@ class VnpayCreatePaymentView(APIView):
             amount_vnd=pkg.amount_vnd,
             capture_package=pkg,
             booth_id=booth_id,
-            expires_at=expires,
+            expires_at=expires_at_utc,
             status=PaymentOrder.Status.PENDING,
         )
 
         order_info = normalize_order_info_ascii(
             f'Thanh toan goi {pkg.name} ma {txn_ref}'
         )
-        create_date = now.strftime('%Y%m%d%H%M%S')
-        expire_date = expires.strftime('%Y%m%d%H%M%S')
+        create_date = now_vn.strftime('%Y%m%d%H%M%S')
+        expire_date = expires_vn.strftime('%Y%m%d%H%M%S')
 
         params = {
             'vnp_Version': '2.1.0',
@@ -119,7 +130,7 @@ class VnpayCreatePaymentView(APIView):
                 'payment_url': payment_url,
                 'order_id': txn_ref,
                 'amount_vnd': order.amount_vnd,
-                'expired_at': int(expires.timestamp() * 1000),
+                'expired_at': int(expires_at_utc.timestamp() * 1000),
                 'package': {'id': pkg.id, 'code': pkg.code, 'name': pkg.name},
             },
             status=status.HTTP_201_CREATED,
