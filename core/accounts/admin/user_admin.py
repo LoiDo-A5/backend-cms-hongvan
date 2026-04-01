@@ -14,7 +14,6 @@ from onesignal_sdk.client import basic_auth_request
 from onesignal_sdk.error import OneSignalHTTPError
 
 from core.accounts.models import UserSignalId
-from core.accounts.models import UserLocation
 from core.accounts.tasks.sms import send_sms
 from core.accounts.utils import login_content_generator
 from core.accounts.utils import otp_generator
@@ -83,14 +82,6 @@ def delete_one_signal_player_id(player_id):
         app_id=settings.ONESIGNAL_APP_ID,
     )
     return onesignal_client.delete_player(player_id)
-
-
-class UserLocationInline(admin.StackedInline):
-    model = UserLocation
-    can_delete = True
-    verbose_name_plural = 'User location'
-    fields = ('user', 'location')
-    show_change_link = True
 
 
 class UserAdmin(DjUserAdmin):
@@ -176,7 +167,6 @@ class UserAdmin(DjUserAdmin):
         'clear_one_signal_id',
     ]
     inlines = [
-        UserLocationInline,
         SignalIdInline,
     ]
     list_filter = (

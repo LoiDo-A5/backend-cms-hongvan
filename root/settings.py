@@ -170,8 +170,6 @@ INSTALLED_APPS = [
     'core.accounts.custom_providers.custom_google',
 
     'common',
-    'artwork',
-    'activity_log',
 ]
 
 MIDDLEWARE = [

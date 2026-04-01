@@ -7,14 +7,7 @@ from rest_framework.response import Response
 
 from core.accounts.models import UserProfile
 from core.accounts.models import User
-from core.accounts.models import UserVisibleSetting
 from core.accounts.models.user import USER_ROLE_CHOICES
-
-
-class UserVisibleSettingSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = UserVisibleSetting
-        fields = ('is_public_social_media', 'is_public_artwork', 'is_public_profile')
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -24,9 +17,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(source='user.avatar', required=False, allow_null=True)
     role = serializers.ChoiceField(source='user.role', choices=USER_ROLE_CHOICES)
     background = serializers.ImageField(source='user.background', required=False, allow_null=True)
-    key_signature = serializers.CharField(source='signature')
-    visible_setting = UserVisibleSettingSerializer()
     uuid_user = serializers.CharField(source='user.uuid', required=False, allow_blank=True)
+    year_of_birth = serializers.CharField(source='user.year_of_birth', required=False, allow_blank=True)
+    place_of_birth = serializers.CharField(source='user.place_of_birth', required=False, allow_blank=True)
 
     class Meta:
         model = UserProfile
@@ -36,25 +29,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'nick_name',
             'email',
             'phone_number',
-            'introduction',
-            'websites',
-            'socials',
             'address',
             'live_at',
             'image_portrait',
-            'introduction',
-            'about_artist',
-            'membership',
-            'training_background',
+            'bio',
             'year_of_birth',
             'place_of_birth',
             'is_owner',
             'avatar',
             'role',
             'background',
-            'signature',
-            'key_signature',
-            'visible_setting',
             'legal_name',
             'uuid_user',
         )
@@ -62,37 +46,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         user = self.context['request'].user
-        user_visible_setting, created = UserVisibleSetting.objects.get_or_create(user=instance.user)
-
         instance.is_owner = instance.has_owner(user)
-        instance.visible_setting = user_visible_setting
-
         return super().to_representation(instance)
 
 
 class UserProfilePatchSerializer(UserProfileSerializer):
     image_portrait = serializers.CharField(write_only=True, required=False)
-    signature = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = UserProfile
-        fields = UserProfileSerializer.Meta.fields + ('image_portrait', 'signature')
+        fields = UserProfileSerializer.Meta.fields + ('image_portrait',)
         ref_name = 'UserProfilePatchSerializer'
 
     def update(self, instance, validated_data):
         user_instance = instance.user
         user_data = validated_data.pop('user', {})
-        # Update User
         for attr, value in user_data.items():
-            user_instance = instance.user
             setattr(user_instance, attr, value)
-
         user_instance.save()
 
-        # Update UserProfile
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-
         instance.save()
         return instance
 

@@ -30,29 +30,16 @@ urlpatterns = [
     path('toc/', TemplateView.as_view(template_name='toc.html')),
     path('', TemplateView.as_view(template_name='index.html')),
     path('accounts/', include('allauth.urls'), name='socialaccount_signup'),
-    path('api/common/', include('common.api_urls')),  # included s3 upload
     path('admin/', admin.site.urls),
-    path(
-        'api/artwork/', include(
-            ('artwork.api_urls', 'artwork'),
-            namespace='artwork',
-        ),
-    ),
-    path(
-        'api/activity_log/', include(
-            ('activity_log.api_urls', 'activity_log'),
-            namespace='activity_log',
-        ),
-    ),
 ]
 
 schema_view = get_schema_view(
     openapi.Info(
-        title='Art Vault API',
+        title='PhotoBook API',
         default_version='v1',
-        description='Art Vault API',
+        description='PhotoBook backend API',
         terms_of_service='https://www.google.com/policies/terms/',
-        contact=openapi.Contact(email='system@artvault.asia'),
+        contact=openapi.Contact(email='support@example.com'),
         license=openapi.License(name='MIT License'),
     ),
     public=True,

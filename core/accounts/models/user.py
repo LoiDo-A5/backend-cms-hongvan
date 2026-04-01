@@ -21,17 +21,13 @@ import uuid
 
 
 class USER_ROLE:
-    ARTIST = 1
-    GALLERY_OWNER = 2
-    SERVICE_PROVIDER = 3
-    COLLECTOR = 4
+    USER = 1
+    STAFF = 2
 
 
 USER_ROLE_CHOICES = (
-    (USER_ROLE.ARTIST, 'Artist'),
-    (USER_ROLE.GALLERY_OWNER, 'Gallery owner'),
-    (USER_ROLE.SERVICE_PROVIDER, 'Service provider'),
-    (USER_ROLE.COLLECTOR, 'Collector'),
+    (USER_ROLE.USER, 'User'),
+    (USER_ROLE.STAFF, 'Staff'),
 )
 
 
@@ -80,7 +76,7 @@ class User(AbstractUser, PermissionListMixin):
     year_of_birth = models.CharField(null=True, blank=True)
     place_of_birth = models.CharField(null=True, blank=True)
 
-    uuid = models.CharField(default=uuid.uuid4, unique=True, error_messages={'unique': 'Gladius ID already in use.'})
+    uuid = models.CharField(default=uuid.uuid4, unique=True, error_messages={'unique': 'Public ID already in use.'})
     uuid_last_updated_at = models.DateTimeField(null=True, blank=True)
 
     is_first_login = models.BooleanField(default=True)

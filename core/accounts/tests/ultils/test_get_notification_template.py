@@ -9,7 +9,7 @@ from core.accounts.models.notification import Notification
 
 class GetNotificationTemplateTests(TestCase):
     def test_get_notification_template(self):
-        template = get_notification_template(content_code=NOTIFICATIONS_CONTENT_CODE.RECEIVE_CERTIFICATE_REQUEST)
+        template = get_notification_template(content_code=NOTIFICATIONS_CONTENT_CODE.GENERIC)
 
         self.assertIsNotNone(template)
 
@@ -18,7 +18,7 @@ class GetNotificationTemplateTests(TestCase):
         self.assertIsNone(template)
 
     def test_make_notification_should_not_create_new_notification_if_pass_wrong_code(self):
-        user = UserFactory
+        user = UserFactory()
         self.assertEqual(Notification.objects.count(), 0)
 
         make_notification_message(user=user, content_code='WRONG_CODE')

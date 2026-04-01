@@ -190,7 +190,7 @@ class MeApiTest(BaseUserTest):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('uuid', response.data)
-        self.assertIn('You can edit your Gladius ID again after 6 months.', str(response.data['uuid'][0]))
+        self.assertIn('You can edit your public ID again after 6 months.', str(response.data['uuid'][0]))
 
         self.user.refresh_from_db()
         self.assertNotEqual(self.user.uuid, new_uuid)

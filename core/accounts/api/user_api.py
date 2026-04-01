@@ -6,21 +6,21 @@ from core.accounts.models import User
 from core.accounts.models import UserProfile
 
 
-class ArtistProfilePatchSerializer(serializers.ModelSerializer):
+class UserProfilePatchSerializer(serializers.ModelSerializer):
     image_portrait = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = UserProfile
-        fields = ('nick_name', 'id_card_number', 'address', 'certification', 'introduction', 'place_of_birth',
-                  'year_of_birth', 'live_at', 'email', 'websites', 'socials', 'phone_number', 'image_portrait')
+        fields = ('nick_name', 'id_card_number', 'address', 'live_at', 'email', 'phone_number', 'image_portrait',
+                  'bio')
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ('nick_name', 'id_card_number', 'address', 'certification', 'introduction', 'place_of_birth',
-                  'year_of_birth', 'live_at', 'email', 'websites', 'socials', 'phone_number', 'image_portrait')
+        fields = ('nick_name', 'id_card_number', 'address', 'live_at', 'email', 'phone_number', 'image_portrait',
+                  'bio')
 
 
 class UserSerializer(serializers.ModelSerializer):

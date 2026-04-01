@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 
-from core.accounts.api.user_api import UserSerializer, ArtistProfilePatchSerializer
+from core.accounts.api.user_api import UserSerializer, UserProfilePatchSerializer
 from core.accounts.models import User, UserProfile
 
 
@@ -22,7 +22,7 @@ class MeSerializer(serializers.Serializer):
 
 
 class MePatchSerializer(serializers.ModelSerializer):
-    profile = ArtistProfilePatchSerializer()
+    profile = UserProfilePatchSerializer()
     avatar = serializers.CharField()
     background = serializers.CharField()
 
@@ -58,7 +58,7 @@ class MePatchSerializer(serializers.ModelSerializer):
 
         six_months_ago = timezone.now() - relativedelta(months=6)
         if self.instance.uuid_last_updated_at > six_months_ago:
-            raise serializers.ValidationError('You can edit your Gladius ID again after 6 months.')
+            raise serializers.ValidationError('You can edit your public ID again after 6 months.')
 
         return value
 
@@ -81,18 +81,6 @@ class MePatchSerializer(serializers.ModelSerializer):
         instance.is_first_login = False
         instance.save()
 
-        if uuid_changed:
-            from activity_log.models.user_log import UserLog, USER_ACTION_UPDATE_GLADIUS_ID
-            UserLog.objects.create(
-                user=instance,
-                action_type=USER_ACTION_UPDATE_GLADIUS_ID,
-                content_vi=f'Người dùng thay đổi Gladius ID từ {old_uuid} sang {instance.uuid}',
-                content_en=f'User changed Gladius ID from {old_uuid} to {instance.uuid}',
-                params={
-                    'previous_uuid': old_uuid,
-                    'new_uuid': instance.uuid,
-                },
-            )
         return instance
 
 

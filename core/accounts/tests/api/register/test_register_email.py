@@ -12,7 +12,6 @@ class RegisterEmailApiTests(BaseUserTest):
             'password1': 'jkasdfbj',
             'password2': 'jkasdfbj',
             'time_zone': 'Asia/Jakarta',
-            'title_artwork': 'titleabc',
         }
         response = self.client.post(
             '/api/accounts/register/email/', data,
@@ -30,7 +29,6 @@ class RegisterEmailApiTests(BaseUserTest):
             'password1': 'jkasdfbj',
             'password2': 'jkasdfbj',
             'time_zone': 'Asia/Jakarta',
-            'title_artwork': 'titleabc',
         }
         response = self.client.post(
             '/api/accounts/register/email/', data,
