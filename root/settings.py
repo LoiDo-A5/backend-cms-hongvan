@@ -85,7 +85,12 @@ env = environ.Env(
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')
 if IS_TEST:
     os.environ.setdefault('IS_TEST', '1')
-IS_LOCAL = 'runserver' in sys.argv or 'runserver_plus' in sys.argv
+# Load .env.local for runserver and any manage.py command (migrate, createsuperuser, shell, …)
+IS_LOCAL = (
+    'runserver' in sys.argv
+    or 'runserver_plus' in sys.argv
+    or (sys.argv and os.path.basename(sys.argv[0]) == 'manage.py')
+)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 root = environ.Path(__file__) - 2  # 2 level above
