@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.photobooth.models import CapturePackage, PaymentOrder
+from core.photobooth.models import CapturePackage, PaymentOrder, PhotoboothDevice
 
 
 @admin.register(CapturePackage)
@@ -17,6 +17,21 @@ class CapturePackageAdmin(admin.ModelAdmin):
     list_filter = ('is_active',)
     search_fields = ('code', 'name')
     ordering = ('sort_order', 'id')
+
+
+@admin.register(PhotoboothDevice)
+class PhotoboothDeviceAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'name',
+        'device_id',
+        'is_active',
+        'last_seen_at',
+        'created_at',
+    )
+    list_filter = ('is_active',)
+    search_fields = ('name', 'device_id')
+    ordering = ('-id',)
 
 
 @admin.register(PaymentOrder)

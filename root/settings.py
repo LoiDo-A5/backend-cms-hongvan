@@ -87,6 +87,8 @@ env = environ.Env(
     VNPAY_RETURN_URL=(str, ''),
     # Để trống = khách chọn cổng trên trang VNPAY. VNPAYQR chỉ bật khi merchant sandbox đã bật kênh QR; nếu không dễ gặp code 70 (sai chữ ký) tùy cấu hình cổng.
     VNPAY_DEFAULT_BANK_CODE=(str, ''),
+    # Tên thiết bị hiển thị khi client không gửi `name` (POST /api/photobooth/devices/register/).
+    PHOTOBOOTH_DEVICE_DEFAULT_NAME=(str, 'Photobooth'),
 )
 
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')
@@ -386,6 +388,7 @@ VNPAY_HASH_SECRET = env('VNPAY_HASH_SECRET')
 VNPAY_PAYMENT_URL = env('VNPAY_PAYMENT_URL')
 VNPAY_RETURN_URL = env('VNPAY_RETURN_URL')
 VNPAY_DEFAULT_BANK_CODE = env('VNPAY_DEFAULT_BANK_CODE')
+PHOTOBOOTH_DEVICE_DEFAULT_NAME = env('PHOTOBOOTH_DEVICE_DEFAULT_NAME')
 
 # http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html
 # https://docs.celeryq.dev/en/3.1/configuration.html
