@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/', include(tf_urls)),
 
     path('api/common/', include('common.api_urls')),
+    path('api/photobooth/', include('core.photobooth.api_urls')),
     path('api/accounts/', include('core.accounts.api_urls')),
     path('api/accounts/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/accounts/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

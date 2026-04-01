@@ -170,6 +170,7 @@ INSTALLED_APPS = [
     'core.accounts.custom_providers.custom_google',
 
     'common',
+    'core.photobooth',
 ]
 
 MIDDLEWARE = [
