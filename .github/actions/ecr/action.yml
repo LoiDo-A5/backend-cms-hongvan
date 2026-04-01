@@ -1,0 +1,33 @@
+name: 'Prepare ECR'
+description: 'Install and prepare ecr usage'
+runs:
+  using: "composite"
+  steps:
+    - name: Docker info
+      run: |
+        set
+        docker info
+      shell: sh
+    - name: Install system package
+      run: |
+        apk update
+        apk add git zlib-dev libzip-dev libcurl curl
+      shell: sh
+    - name: Install libc
+      run: |
+        curl https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub -o /etc/apk/keys/sgerrand.rsa.pub
+        curl -L https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.34-r0/glibc-2.34-r0.apk -o "glibc.apk"
+        apk del libc6-compat
+        apk add --force-overwrite glibc.apk
+      shell: sh
+    - name: install aws
+      run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscli.zip"
+        unzip "awscli.zip"
+        ./aws/install
+        rm -rf aws
+        rm -rf awscliv2.zip
+      shell: sh
+
+# issue: https://github.com/eoh-jsc/eoh-gateway-backend/actions/runs/3486456868/jobs/5832957852
+# fix workaround: https://github.com/sgerrand/alpine-pkg-glibc/issues/185

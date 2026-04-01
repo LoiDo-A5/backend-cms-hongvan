@@ -1,0 +1,50 @@
+# Add '@domain/core' label to any change within the 'core' package
+workflow:
+- .github/*
+- .github/**/*
+
+has-test:
+- '*/**/tests/*'
+- '*/tests/*'
+- '*/tests/**/*'
+- '*/**/tests/**/*'
+
+admin-feature:
+- '*/**/admin.py'
+- '*/**/admin/*'
+- '*/**/admin/**/*'
+
+hts:
+- businesses/hts/*
+- businesses/hts/**/*
+
+property_manager:
+- businesses/property_manager/*
+- businesses/property_manager/**/*
+
+personal_health:
+- businesses/personal_health/*
+- businesses/personal_health/**/*
+
+smart_parking:
+- businesses/smart_parking/*
+- businesses/smart_parking/**/*
+
+emergency_button:
+- businesses/emergency_button/*
+- businesses/emergency_button/**/*
+
+iot:
+- iot/*
+- iot/**/*
+
+core:
+- core/*
+- core/**/*
+
+deploy:
+- deploy/*
+- deploy/**/*
+
+Dockerfile:
+- Dockerfile

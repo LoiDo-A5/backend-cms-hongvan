@@ -1,0 +1,65 @@
+# [START kubernetes_deployment]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-monitor
+  namespace: default
+  labels:
+    app: $PROJECT_SLUG-$ENVIRONMENT_NAME-monitor
+    tags.datadoghq.com/env: $ENVIRONMENT_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $PROJECT_SLUG-$ENVIRONMENT_NAME-monitor
+  template:
+    metadata:
+      labels:
+        app: $PROJECT_SLUG-$ENVIRONMENT_NAME-monitor
+        tags.datadoghq.com/env: $ENVIRONMENT_NAME
+    spec:
+      imagePullSecrets:
+        - name: $PROJECT_SLUG-docker
+      containers:
+        - name: $PROJECT_SLUG-$ENVIRONMENT_NAME-monitor
+          image: $DOCKER_IMAGE:$VERSION
+          command: ["/bin/sh"]
+          args: ["-c", "celery -A root flower"]
+          resources:
+            requests:
+              memory: "300Mi"
+              cpu: "200m"
+            limits:
+              memory: "300Mi"
+              cpu: "300m"
+          livenessProbe:
+            httpGet:
+              port: 5555
+              path: /
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          ports:
+            - containerPort: 80
+              name: http
+          envFrom:
+            - configMapRef:
+                name: web-config-map
+            - secretRef:
+                name: $PROJECT_SLUG-$ENVIRONMENT_NAME-secret
+          env:
+            - name: ROLE
+              value: monitor
+            - name: DJANGO_SETTINGS_MODULE
+              value: root.$ENVIRONMENT_NAME.worker
+            - name: ENVIRONMENT
+              value: $ENVIRONMENT_NAME
+            - name: PROJECT_SLUG
+              value: $PROJECT_SLUG
+            - name: DOCKER_IMAGE
+              value: $DOCKER_IMAGE
+            - name: VERSION
+              value: $VERSION
+
+
+# [END kubernetes_deployment]

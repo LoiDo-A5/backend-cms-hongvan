@@ -1,0 +1,23 @@
+# [START LoadBalancer]
+apiVersion: v1
+kind: Service
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-svc
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: "*"
+  labels:
+    app: $PROJECT_SLUG-$ENVIRONMENT_NAME-web
+spec:
+  ports:
+    - protocol: TCP
+      port: 443
+      targetPort: 80
+      name: https
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: http
+  selector:
+    app: $PROJECT_SLUG-$ENVIRONMENT_NAME-web
+
+# [END LoadBalancer]

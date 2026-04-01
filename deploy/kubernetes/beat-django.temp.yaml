@@ -1,0 +1,78 @@
+# [START kubernetes_deployment]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-beat-django
+  namespace: default
+  labels:
+    app: $PROJECT_SLUG-$ENVIRONMENT_NAME-beat-django
+    tags.datadoghq.com/env: $ENVIRONMENT_NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $PROJECT_SLUG-$ENVIRONMENT_NAME-beat-django
+  template:
+    metadata:
+      annotations:
+        admission.datadoghq.com/enabled: "false"
+        ad.datadoghq.com/$PROJECT_SLUG-$ENVIRONMENT_NAME-beat-django.tags: >-
+          {
+            "env":"$ENVIRONMENT_NAME"
+          }
+        ad.datadoghq.com/$PROJECT_SLUG-$ENVIRONMENT_NAME-beat-django.logs: >-
+          [{
+            "source":"$PROJECT_SLUG",
+            "service":"$PROJECT_SLUG-beat-django"
+          }]
+      labels:
+        app: $PROJECT_SLUG-$ENVIRONMENT_NAME-beat-django
+        tags.datadoghq.com/env: $ENVIRONMENT_NAME
+    spec:
+      imagePullSecrets:
+        - name: $PROJECT_SLUG-docker
+      containers:
+        - name: $PROJECT_SLUG-$ENVIRONMENT_NAME-beat-django
+          image: $DOCKER_IMAGE:$VERSION
+          command: ["/bin/sh"]
+          args: ["-c", "celery -A root beat -l info -S django"]
+          resources:
+            requests:
+              memory: "200Mi"
+              cpu: "100m"
+            limits:
+              memory: "300Mi"
+              cpu: "300m"
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - "ps aux | grep 'celery -A root beat' | grep -v grep| awk '{print $2}'"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          ports:
+            - containerPort: 80
+              name: http
+          envFrom:
+            - configMapRef:
+                name: web-config-map
+            - secretRef:
+                name: $PROJECT_SLUG-$ENVIRONMENT_NAME-secret
+          env:
+            - name: ROLE
+              value: beat-django
+            - name: DD_TRACE_ENABLED
+              value: "true"
+            - name: DD_APM_ENABLED
+              value: "false"
+            - name: DJANGO_SETTINGS_MODULE
+              value: root.$ENVIRONMENT_NAME.web
+            - name: ENVIRONMENT
+              value: $ENVIRONMENT_NAME
+            - name: PROJECT_SLUG
+              value: $PROJECT_SLUG
+            - name: DOCKER_IMAGE
+              value: $DOCKER_IMAGE
+            - name: VERSION
+              value: $VERSION

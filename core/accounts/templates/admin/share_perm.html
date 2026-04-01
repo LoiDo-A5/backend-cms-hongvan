@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<form method="post">
+    {% csrf_token %}
+    <p>Are you sure you want to execute this action on the selected items?</p>
+    <p>{{ title }} full permission of Unit</p>
+    <input list="list_unit" name="id_unit" type="text" class="form-control" id="unit">
+    <datalist  id="list_unit">
+    {% for unit in units %}
+        <option value="{{unit.id}}">{{unit}}</option>
+    {% endfor %}
+    </datalist>
+    <p>for username: <b>{{account}}</b> </p>
+    <div><input type="submit" name="apply" value="Apply"/></div>
+</form>
+{% endblock %}

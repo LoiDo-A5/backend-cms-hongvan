@@ -1,0 +1,44 @@
+name: Update Dependencies
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    steps:
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y git
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.DEPLOY_PAT_TOKEN }}
+      # No cache cause different poetry version -> The lock file is not compatible with the current version of Poetry.
+      - uses: ./.github/actions/config_git
+      - name: Update dependencies
+        run: |
+          pip install -U pip setuptools poetry
+          cp .env.test .env
+          poetry install --no-root
+          poetry update
+        env:
+          REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        id: cpr
+        with:
+          token: ${{ secrets.DEPLOY_PAT_TOKEN }}
+          branch: chore/update-python-dependencies-${{ steps.date.outputs.date }}
+          base: main
+          body: Update python dependencies ${{ steps.date.outputs.date }}
+          reviewers: canh-eoh,son-eoh,phuong-eoh
+          title: Update python dependencies ${{ steps.date.outputs.date }}
+          commit-message: Update python dependencies ${{ steps.date.outputs.date }}

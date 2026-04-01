@@ -1,0 +1,11 @@
+{% extends "two_factor/_base.html" %}
+
+{% block content_wrapper %}
+  <div class="container" style="height: 100%">
+    <div class="row" style="height: 100%">
+      <div class="col" style="display: flex; justify-content: center; align-items: center; flex-direction: column">
+        {% block content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

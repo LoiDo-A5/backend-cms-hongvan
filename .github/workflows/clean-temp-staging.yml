@@ -1,0 +1,22 @@
+name: Clean staging temp deploy
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/invoke
+        with:
+          KUBE_CLUSTER_NAME: ${{ secrets.STAGING_KUBE_CLUSTER_NAME }}
+          AWS_DEFAULT_REGION: ${{ secrets.STAGING_AWS_DEFAULT_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+          ENVIRONMENT_NAME: staging
+          PROJECT_SLUG: artvaultasia-backend
+          COMMAND: clean-temp

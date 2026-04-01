@@ -1,0 +1,14 @@
+{% load i18n %}
+
+{% if wizard.steps.prev %}
+  <button name="wizard_goto_step" type="submit"
+          value="{{ wizard.steps.prev }}"
+          class="btn btn-secondary">{% trans "Back" %}</button>
+{% endif %}
+<button style="font-size: 18px; padding: 5px 50px; border-radius: 25px;
+  background-color: #00979D; color: #FFFFFF; border-color: transparent"
+          name="button-login"
+          type="submit"
+          class="btn btn-default">
+      {% trans "Next" %}
+</button>

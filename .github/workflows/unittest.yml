@@ -1,0 +1,56 @@
+name: Unittest
+
+on:
+  pull_request:
+
+concurrency:
+  group: unittest-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  need-run-unittest:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    outputs:
+      should-run: ${{ steps.check-execute.outputs.has }}
+    steps:
+      - name: Install git
+        run: |
+          apt update
+          apt install -y git
+          git config --global --add safe.directory /__w/eoh-gateway-backend/eoh-gateway-backend
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - run: |
+          git config --global safe.directory '*'
+          git fetch origin main
+      - name: Check if need to execute test
+        id: check-execute
+        run: python .github/scripts/need_run_test.py
+        env:
+          COMMIT_SHA: ${{ github.event.after }}
+
+  test-all:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    needs:
+      - need-run-unittest
+    services:
+      postgres:
+        image: postgres:15.3
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: db
+      redis:
+        image: redis
+    if: ${{ needs.need-run-unittest.outputs.should-run != 'no'}}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/test
+      - name: Test API Document
+        run: |
+          poetry run pytest root/tests/test_api_docs.py --reuse-db
+        env:
+          TEST_API: 1

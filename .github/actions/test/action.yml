@@ -1,0 +1,15 @@
+name: 'Run unittest'
+description: 'Run specific test module and collect coverage'
+inputs:
+  MODULE:
+    description: 'Python module'
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: Cache poetry
+      uses: ./.github/actions/cache_poetry
+    - name: Running test
+      run: |
+        poetry run pytest --cov --dist no --reuse-db
+      shell: bash

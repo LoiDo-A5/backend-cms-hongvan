@@ -1,0 +1,38 @@
+name: 'Install tools'
+description: 'Install tools'
+inputs:
+  AWS_DEFAULT_REGION:
+    description: 'AWS_DEFAULT_REGION'
+    required: true
+  AWS_ACCESS_KEY_ID:
+    description: 'AWS_ACCESS_KEY_ID'
+    required: true
+  AWS_SECRET_ACCESS_KEY:
+    description: 'AWS_SECRET_ACCESS_KEY'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install kubectl
+      run: |
+        curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.27.1/2023-04-19/bin/linux/amd64/kubectl
+        chmod +x ./kubectl
+        mv ./kubectl /usr/local/bin/kubectl
+      shell: bash
+    - name: Install AWS CLI
+      run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        ./aws/install
+      shell: bash
+    - name: Install gettext
+      run: |
+        apt update
+        apt install -y gettext
+      shell: bash
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ inputs.AWS_DEFAULT_REGION }}

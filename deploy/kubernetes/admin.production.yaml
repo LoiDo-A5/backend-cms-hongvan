@@ -1,0 +1,96 @@
+# [START kubernetes_deployment]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-admin
+  namespace: default
+  labels:
+    app: $PROJECT_SLUG-$ENVIRONMENT_NAME-admin
+    tags.datadoghq.com/env: $ENVIRONMENT_NAME
+spec:
+  selector:
+    matchLabels:
+      app: $PROJECT_SLUG-$ENVIRONMENT_NAME-admin
+  template:
+    metadata:
+      annotations:
+        admission.datadoghq.com/enabled: "false"
+        ad.datadoghq.com/$PROJECT_SLUG-$ENVIRONMENT_NAME-admin.tags: >-
+          {
+            "env":"$ENVIRONMENT_NAME"
+          }
+        ad.datadoghq.com/$PROJECT_SLUG-$ENVIRONMENT_NAME-admin.logs: >-
+          [{
+            "source":"$PROJECT_SLUG",
+            "service":"$PROJECT_SLUG-admin"
+          }]
+      labels:
+        app: $PROJECT_SLUG-$ENVIRONMENT_NAME-admin
+        tags.datadoghq.com/env: $ENVIRONMENT_NAME
+    spec:
+      imagePullSecrets:
+        - name: $PROJECT_SLUG-docker
+      containers:
+        - name: $PROJECT_SLUG-$ENVIRONMENT_NAME-admin
+          image: $DOCKER_IMAGE:$VERSION
+          command: ["/bin/sh"]
+          args: ["-c", "uwsgi --spooler-quiet --ini /app/deploy/uwsgi/uwsgi.ini --listen `cat /proc/sys/net/core/somaxconn`"]
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "700m"
+            limits:
+              memory: "3Gi"
+              cpu: "900m"
+          envFrom:
+            - configMapRef:
+                name: web-config-map
+            - secretRef:
+                name: $PROJECT_SLUG-$ENVIRONMENT_NAME-secret
+          env:
+            - name: ROLE
+              value: web
+            - name: DD_TRACE_ANALYTICS_ENABLED
+              value: "false"
+            - name: DD_TRACE_ENABLED
+              value: "true"
+            - name: DD_APM_ENABLED
+              value: "false"
+            - name: DD_ENV
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/env']
+            - name: DD_SERVICE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/service']
+            - name: DJANGO_SETTINGS_MODULE
+              value: root.$ENVIRONMENT_NAME.web
+            - name: ENVIRONMENT
+              value: $ENVIRONMENT_NAME
+            - name: PROJECT_SLUG
+              value: $PROJECT_SLUG
+            - name: DOCKER_IMAGE
+              value: $DOCKER_IMAGE
+            - name: VERSION
+              value: $VERSION
+            - name: IS_ADMIN_SITE
+              value: "true"
+          livenessProbe:
+            httpGet:
+              path: /healthcheck/
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthcheck/
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 15
+# [END kubernetes_deployment]

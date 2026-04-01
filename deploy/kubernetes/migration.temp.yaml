@@ -1,0 +1,72 @@
+# [START kubernetes_deployment]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $DEPLOY_NAME
+  namespace: default
+  labels:
+    app: $DEPLOY_NAME
+spec:
+  selector:
+    matchLabels:
+      app: $DEPLOY_NAME
+  template:
+    metadata:
+      annotations:
+        admission.datadoghq.com/enabled: "false"
+        ad.datadoghq.com/$DEPLOY_NAME.tags: >-
+          {
+            "env":"$ENVIRONMENT_NAME"
+          }
+        ad.datadoghq.com/$DEPLOY_NAME.logs: >-
+          [{
+            "source":"$PROJECT_SLUG",
+            "service":"$PROJECT_SLUG-web-migration"
+          }]
+      labels:
+        app: $DEPLOY_NAME
+    spec:
+      imagePullSecrets:
+        - name: $PROJECT_SLUG-docker
+      containers:
+        - name: $DEPLOY_NAME
+          image: $DOCKER_IMAGE:$VERSION
+          command: ["/bin/sh"]
+          args: ["-c", "while true; do echo 'migration pod alive'; sleep 10;done"]
+          securityContext:
+            privileged: true
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              memory: "300Mi"
+              cpu: "250m"
+            limits:
+              memory: "500Mi"
+              cpu: "500m"
+          envFrom:
+            - configMapRef:
+                name: web-config-map
+            - secretRef:
+                name: $PROJECT_SLUG-$ENVIRONMENT_NAME-secret
+          env:
+            - name: ROLE
+              value: web
+            - name: DD_TRACE_ANALYTICS_ENABLED
+              value: "false"
+            - name: DD_TRACE_ENABLED
+              value: "true"
+            - name: DD_APM_ENABLED
+              value: "false"
+            - name: DJANGO_SETTINGS_MODULE
+              value: root.$ENVIRONMENT_NAME.worker
+            - name: ENVIRONMENT
+              value: $ENVIRONMENT_NAME
+            - name: PROJECT_SLUG
+              value: $PROJECT_SLUG
+            - name: DOCKER_IMAGE
+              value: $DOCKER_IMAGE
+            - name: VERSION
+              value: $VERSION
+# [END kubernetes_deployment]

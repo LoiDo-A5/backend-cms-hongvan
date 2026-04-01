@@ -1,0 +1,10 @@
+name: 'Config git user'
+description: 'Config git user'
+runs:
+  using: "composite"
+  steps:
+    - name: config git
+      run: |
+        git config --global user.name "Internal Bot"
+        git config --global user.email "internal@artvault.asia"
+      shell: bash

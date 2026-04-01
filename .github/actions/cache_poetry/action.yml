@@ -1,0 +1,22 @@
+name: 'Cache poetry package'
+description: 'Cache poetry package'
+runs:
+  using: "composite"
+  steps:
+    - name: Cache dependencies
+      id: cache-dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pypoetry
+        key: ${{ runner.os }}-${{ github.repository }}-${{ hashFiles('**/poetry.lock') }}
+    - name: Update setup tools
+      shell: bash
+      run: pip install -U pip setuptools poetry
+      env:
+        REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    - name: Install dependencies
+      shell: bash
+      if: steps.cache-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-root
+      env:
+        REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt

@@ -1,0 +1,32 @@
+name: Deploy Staging
+
+on:
+  push:
+    tags:
+      - s*
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    container: python:3.12
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/deploy
+        with:
+          KUBE_CLUSTER_NAME: ${{ secrets.STAGING_KUBE_CLUSTER_NAME }}
+          AWS_DEFAULT_REGION: ${{ secrets.STAGING_AWS_DEFAULT_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+          DOCKER_IMAGE: ${{ secrets.STAGING_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.STAGING_AWS_DEFAULT_REGION }}.amazonaws.com/${{ github.repository }}
+          ENVIRONMENT_NAME: staging
+          PROJECT_SLUG: artvaultasia-backend
+          DOMAIN: staging-backend.${{ secrets.DOMAIN }}
+          ADMIN_DOMAIN: staging-l61jb9rbi3h3.${{ secrets.DOMAIN }}
+          MONITOR_DOMAIN: staging-flower-bs5jwamtokmg.${{ secrets.DOMAIN }}
+      - name: Notify about failure
+        if: ${{ failure() }}
+        run: |
+          cat << EOF > message.json
+          {"@type":"MessageCard","@context":"https://schema.org/extensions","summary":"Deploy backend staging failed!","themeColor":"ff0000","title":"$GITHUB_REPOSITORY deploy staging failed 💢!","sections":[{"facts":[{"name":"Repository:","value":"$GITHUB_REPOSITORY"},{"name":"Branch:","value":"$GITHUB_REF_NAME"},{"name":"Commit:","value":"$GITHUB_SHA"}]}],"potentialAction":[{"@type":"OpenUri","name":"View on GitHub","targets":[{"os":"default","uri":"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"}]}]}
+          EOF
+          curl -X POST ${{ secrets.TEAMS_WEBHOOK_DEPLOY_BACKEND }} --header 'Content-Type: application/json' -d @message.json

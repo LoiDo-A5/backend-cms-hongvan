@@ -1,0 +1,52 @@
+name: 'Execute command on k8s'
+description: 'Execute django command on separated pod on k8s'
+inputs:
+  KUBE_CLUSTER_NAME:
+    description: 'KUBE_CLUSTER_NAME'
+    required: true
+  AWS_DEFAULT_REGION:
+    description: 'AWS_DEFAULT_REGION'
+    required: true
+  AWS_ACCESS_KEY_ID:
+    description: 'AWS_ACCESS_KEY_ID'
+    required: true
+  AWS_SECRET_ACCESS_KEY:
+    description: 'AWS_SECRET_ACCESS_KEY'
+    required: true
+  COMMIT_TIME:
+    description: 'COMMIT_TIME'
+    required: true
+  DOCKER_IMAGE:
+    description: 'DOCKER_IMAGE'
+    required: true
+  ENVIRONMENT_NAME:
+    description: 'ENVIRONMENT_NAME'
+    required: true
+  PROJECT_SLUG:
+    description: 'PROJECT_SLUG'
+    required: true
+  COMMAND:
+    description: 'COMMAND'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/login_eks
+      with:
+        KUBE_CLUSTER_NAME: ${{ inputs.KUBE_CLUSTER_NAME }}
+        AWS_DEFAULT_REGION: ${{ inputs.AWS_DEFAULT_REGION }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+    - name: Execute command
+      env:
+        AWS_ACCESS_KEY_ID: ${{ inputs.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+        COMMAND: ${{ inputs.COMMAND }}
+      run: |
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        poetry run inv run-single-command --command='$COMMAND'
+      shell: bash

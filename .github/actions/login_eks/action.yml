@@ -1,0 +1,27 @@
+name: 'Login eks'
+description: 'Login into eks'
+inputs:
+  KUBE_CLUSTER_NAME:
+    description: 'KUBE_CLUSTER_NAME'
+    required: true
+  AWS_DEFAULT_REGION:
+    description: 'AWS_DEFAULT_REGION'
+    required: true
+  AWS_ACCESS_KEY_ID:
+    description: 'AWS_ACCESS_KEY_ID'
+    required: true
+  AWS_SECRET_ACCESS_KEY:
+    description: 'AWS_SECRET_ACCESS_KEY'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Login eks
+      env:
+        AWS_DEFAULT_REGION: ${{ inputs.AWS_DEFAULT_REGION }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+      run: |
+        aws eks update-kubeconfig --name ${{ inputs.KUBE_CLUSTER_NAME }}
+        kubectl version
+      shell: bash

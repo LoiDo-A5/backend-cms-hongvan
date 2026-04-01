@@ -1,0 +1,90 @@
+name: 'Deploy Bizfly'
+description: 'Trigger deploy to kubernetes'
+inputs:
+  KUBE_CLUSTER_NAME:
+    description: 'KUBE_CLUSTER_NAME'
+    required: true
+  DOMAIN:
+    description: 'DOMAIN'
+    required: true
+  ADMIN_DOMAIN:
+    description: 'ADMIN_DOMAIN'
+    required: true
+  MONITOR_DOMAIN:
+    description: 'MONITOR_DOMAIN'
+    required: true
+  SMART_PARKING_MANAGER_DOMAIN:
+    description: 'SMART_PARKING_MANAGER_DOMAIN'
+    required: true
+  ATLANTIS_DOMAIN:
+    description: 'ATLANTIS_DOMAIN'
+    required: true
+  AKIA_DOMAIN:
+    description: 'AKIA_DOMAIN'
+    required: true
+  COMMIT_TIME:
+    description: 'COMMIT_TIME'
+    required: true
+  DOCKER_IMAGE:
+    description: 'DOCKER_IMAGE'
+    required: true
+  ENVIRONMENT_NAME:
+    description: 'ENVIRONMENT_NAME'
+    required: true
+  PROJECT_SLUG:
+    description: 'PROJECT_SLUG'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Green migrate database
+      shell: bash
+      env:
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export KUBECONFIG=$HOME/secrets/3gfeo1hccuwnf1hh.kubeconfig
+        kubectl get node
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        inv green-migrate
+
+    - name: Trigger deploy
+      env:
+        DOMAIN: ${{ inputs.DOMAIN }}
+        ADMIN_DOMAIN: ${{ inputs.ADMIN_DOMAIN }}
+        MONITOR_DOMAIN: ${{ inputs.MONITOR_DOMAIN }}
+        SMART_PARKING_MANAGER_DOMAIN: ${{ inputs.SMART_PARKING_MANAGER_DOMAIN }}
+        ATLANTIS_DOMAIN: ${{ inputs.ATLANTIS_DOMAIN }}
+        AKIA_DOMAIN: ${{ inputs.AKIA_DOMAIN }}
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        inv deploy
+      shell: bash
+    - name: Verify deploy
+      env:
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export KUBECONFIG=$HOME/secrets/3gfeo1hccuwnf1hh.kubeconfig
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        inv wait-for-deploy
+      shell: bash
+    - name: Pos-Green migrate database
+      env:
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export KUBECONFIG=$HOME/secrets/3gfeo1hccuwnf1hh.kubeconfig
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        inv pos-green-migrate
+      shell: bash

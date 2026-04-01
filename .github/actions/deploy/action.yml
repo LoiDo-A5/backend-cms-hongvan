@@ -1,0 +1,102 @@
+name: 'Deploy'
+description: 'Trigger deploy to kubernetes'
+inputs:
+  KUBE_CLUSTER_NAME:
+    description: 'KUBE_CLUSTER_NAME'
+    required: true
+  AWS_DEFAULT_REGION:
+    description: 'AWS_DEFAULT_REGION'
+    required: true
+  AWS_ACCESS_KEY_ID:
+    description: 'AWS_ACCESS_KEY_ID'
+    required: true
+  AWS_SECRET_ACCESS_KEY:
+    description: 'AWS_SECRET_ACCESS_KEY'
+    required: true
+  DOMAIN:
+    description: 'DOMAIN'
+    required: true
+  ADMIN_DOMAIN:
+    description: 'ADMIN_DOMAIN'
+    required: true
+  MONITOR_DOMAIN:
+    description: 'MONITOR_DOMAIN'
+    required: true
+  SMART_PARKING_MANAGER_DOMAIN:
+    description: 'SMART_PARKING_MANAGER_DOMAIN'
+    required: true
+  ATLANTIS_DOMAIN:
+    description: 'ATLANTIS_DOMAIN'
+    required: true
+  COMMIT_TIME:
+    description: 'COMMIT_TIME'
+    required: true
+  DOCKER_IMAGE:
+    description: 'DOCKER_IMAGE'
+    required: true
+  ENVIRONMENT_NAME:
+    description: 'ENVIRONMENT_NAME'
+    required: true
+  PROJECT_SLUG:
+    description: 'PROJECT_SLUG'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: ./.github/actions/install_tools
+      with:
+        AWS_DEFAULT_REGION: ${{ inputs.AWS_DEFAULT_REGION }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+    - uses: ./.github/actions/login_eks
+      with:
+        AWS_DEFAULT_REGION: ${{ inputs.AWS_DEFAULT_REGION }}
+        AWS_ACCESS_KEY_ID: ${{ inputs.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+        KUBE_CLUSTER_NAME: ${{ inputs.KUBE_CLUSTER_NAME }}
+    - uses: ./.github/actions/cache_poetry
+    - name: Green migrate database
+      env:
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        poetry run inv green-migrate
+      shell: bash
+    - name: Trigger deploy
+      env:
+        DOMAIN: ${{ inputs.DOMAIN }}
+        ADMIN_DOMAIN: ${{ inputs.ADMIN_DOMAIN }}
+        MONITOR_DOMAIN: ${{ inputs.MONITOR_DOMAIN }}
+        SMART_PARKING_MANAGER_DOMAIN: ${{ inputs.SMART_PARKING_MANAGER_DOMAIN }}
+        ATLANTIS_DOMAIN: ${{ inputs.ATLANTIS_DOMAIN }}
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        poetry run inv deploy
+      shell: bash
+    - name: Verify deploy
+      env:
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        poetry run inv wait-for-deploy
+      shell: bash
+    - name: Pos-Green migrate database
+      env:
+        COMMIT_TIME: ${{ inputs.COMMIT_TIME }}
+        DOCKER_IMAGE: ${{ inputs.DOCKER_IMAGE }}
+        ENVIRONMENT_NAME: ${{ inputs.ENVIRONMENT_NAME }}
+        PROJECT_SLUG: ${{ inputs.PROJECT_SLUG }}
+      run: |
+        export VERSION=$(sh .github/actions/deploy/get_deploy_version.sh)
+        poetry run inv pos-green-migrate
+      shell: bash

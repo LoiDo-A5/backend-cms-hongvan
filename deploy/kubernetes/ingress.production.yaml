@@ -1,0 +1,86 @@
+# [START ingress]
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      real_ip_header X-Real-IP;
+      real_ip_recursive on;
+      set_real_ip_from 10.0.0.0/16;
+    ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  tls:
+  - hosts:
+    - $DOMAIN
+  rules:
+    - host: $DOMAIN
+      http:
+        paths:
+        - pathType: Prefix
+          path: /
+          backend:
+            service:
+              name: $PROJECT_SLUG-$ENVIRONMENT_NAME-svc
+              port:
+                number: 80
+
+---
+
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-admin-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "false"
+    ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  tls:
+  - hosts:
+    - $ADMIN_DOMAIN
+  rules:
+    - host: $ADMIN_DOMAIN
+      http:
+        paths:
+        - pathType: Prefix
+          path: /
+          backend:
+            service:
+              name: $PROJECT_SLUG-$ENVIRONMENT_NAME-admin-svc
+              port:
+                number: 80
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-monitor-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required - Worker Monitor'
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - $MONITOR_DOMAIN
+  rules:
+    - host: $MONITOR_DOMAIN
+      http:
+        paths:
+        - pathType: Prefix
+          path: /
+          backend:
+            service:
+              name: $PROJECT_SLUG-$ENVIRONMENT_NAME-monitor-svc
+              port:
+                number: 80
+
+---
+
+# [END ingress]

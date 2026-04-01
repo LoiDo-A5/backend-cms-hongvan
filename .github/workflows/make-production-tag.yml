@@ -1,0 +1,110 @@
+name: Make production tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      sendNotifications:
+        description: 'Send notifications to all users about new deployment'
+        required: true
+        type: boolean
+
+jobs:
+  create-docker-image:
+    runs-on: ubuntu-latest
+    if: contains(github.ref_type,'tag')
+    container:
+      image: docker:latest
+      env:
+        LD_LIBRARY_PATH: /lib
+        STAGING_REGISTRY_IMAGE: ${{ secrets.STAGING_AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.STAGING_AWS_DEFAULT_REGION }}.amazonaws.com/${{ github.repository }}
+        PRODUCTION_REGISTRY_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/${{ github.repository }}
+
+    services:
+      docker:
+        image: docker:dind
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | cut -c2-)
+          echo $VERSION
+          export VERSION=$VERSION
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - uses: ./.github/actions/ecr
+      - name: Login ECR Production
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com
+          username: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Pull docker image staging
+        run: |
+          export VERSION=${{ steps.get_version.outputs.version }}
+          echo $VERSION
+          docker pull $STAGING_REGISTRY_IMAGE:$VERSION
+      - name: Tag docker image production
+        run: |
+          export VERSION=${{ steps.get_version.outputs.version }}
+          docker tag $STAGING_REGISTRY_IMAGE:$VERSION $PRODUCTION_REGISTRY_IMAGE:$VERSION
+      - name: Push docker image production
+        run: |
+          export VERSION=${{ steps.get_version.outputs.version }}
+          docker push $PRODUCTION_REGISTRY_IMAGE:$VERSION
+      - name: Tag docker image production latest
+        run: |
+          export VERSION=${{ steps.get_version.outputs.version }}
+          docker tag $STAGING_REGISTRY_IMAGE:$VERSION $PRODUCTION_REGISTRY_IMAGE:latest
+      - name: Push docker image production latest
+        run: docker push $PRODUCTION_REGISTRY_IMAGE:latest
+      - name: Clear docker cache
+        run: |
+          docker system prune -f
+          export VERSION=${{ steps.get_version.outputs.version }}
+          docker image rm $PRODUCTION_REGISTRY_IMAGE:$VERSION
+          docker image rm $PRODUCTION_REGISTRY_IMAGE:latest
+
+  make-tag-production:
+    runs-on: ubuntu-latest
+    container: python:3.12-slim-bullseye
+    needs:
+      - create-docker-image
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set version
+        id: version-release
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | cut -c2-)
+          echo $VERSION
+          export VERSION=$VERSION
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        env:
+          COMMIT_TIME: '${{ steps.version-release.outputs.version }}+07:00'
+      - uses: tvdias/github-tagger@v0.0.1
+        with:
+          repo-token: ${{ secrets.DEPLOY_PAT_TOKEN }}
+          tag: 'v${{ steps.version-release.outputs.version }}'
+
+
+  send-notify-for-all-user:
+    name: "Send notify for all user"
+    runs-on: ubuntu-latest
+    container: python:3.12
+    needs:
+      - make-tag-production
+    if: ${{ github.inputs.sendNotifications == 'true' }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/k8s_django_command
+        with:
+          KUBE_CLUSTER_NAME: eoh-production
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          COMMIT_TIME: ${{ github.event.head_commit.timestamp }}
+          DOCKER_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/${{ github.repository }}
+          ENVIRONMENT_NAME: production
+          PROJECT_SLUG: $PROJECT_SLUG
+          COMMAND: python manage.py send_notify_for_all_user

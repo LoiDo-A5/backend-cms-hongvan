@@ -1,0 +1,57 @@
+[report]
+skip_covered = True
+sort = Cover
+omit =
+    .venv/*
+    .github/*
+    .scripts/*
+    manage.py
+    common/management/*
+    common/api_exception_handler.py
+    root/*
+# temporary ignore those library files
+    common/abstract_models/active_model.py
+    common/abstract_models/choice_array_field.py
+    common/utils/models.py
+    common/utils/debug_toolbar.py
+    common/tasks/image.py
+    common/abstract_models/image_field.py
+    common/tasks/pusher.py
+    tasks.py
+    */admin/*
+    */migrations/*
+    */factories/*
+    */factories.py
+    */apps.py
+# test via mobile app
+    core/billing/payments/momo.py
+    iot/modules/modbus/management/commands/verify_base.py
+    iot/modules/modbus/management/commands/verify_modbus_module.py
+    iot/modules/zigbee/management/commands/verify_zigbee_module.py
+    components/connection_manager/chirpstack/management/commands/verify_chirpstack_connection.py
+    components/connection_manager/chirpstack/tests/management/test_verify_chirpstack_connection.py
+    iot/modules/modbus/tests/management/test_verify_base.py
+    iot/modules/modbus/tests/management/test_verify_modbus_module.py
+    iot/modules/zigbee/tests/management/test_verify_zigbee_module.py
+    components/connection_manager/chirpstack/tests/mock_mqtt.py
+# iot dashboard
+    core/accounts/models/org_group.py
+    businesses/property_manager/iot_dashboard/api/org_group.py
+    businesses/property_manager/iot_dashboard/api/org_user.py
+    businesses/property_manager/tests/iot_dashboard/api/test_group_permissions.py
+    businesses/property_manager/tests/iot_dashboard/api/test_org_user_api.py
+# command for loadtest
+    loadtest/management/commands/create_loadtest_data.py
+    loadtest/management/commands/create_loadtest_chip_data.py
+    loadtest/management/commands/filter_chips_not_work.py
+    loadtest/tests/management/commands/test_filter_chips_not_work.py
+    loadtest/management/commands/create_loadtest_chip_data_mqtt.py
+    loadtest/management/commands/delete_loadtest_chip_data_mqtt.py
+    iot/chip_manager/management/commands/generate_config_value_history.py
+    common/management/commands/generate_local_unit.py
+fail_under = 100
+show_missing = True
+
+[run]
+branch = True
+source = .

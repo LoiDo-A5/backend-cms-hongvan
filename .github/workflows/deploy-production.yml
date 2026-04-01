@@ -1,0 +1,82 @@
+name: Deploy Production
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  deploy-production:
+    name: "Deploy production ${{ github.ref_name }}"
+    runs-on: ubuntu-latest
+    container: python:3.12
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/deploy
+        with:
+          KUBE_CLUSTER_NAME: ${{ secrets.KUBE_CLUSTER_NAME }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          DOMAIN: backend.${{ secrets.PRODUCTION_DOMAIN }}
+          ADMIN_DOMAIN: ugevcaalpp1q.${{ secrets.PRODUCTION_DOMAIN }}
+          MONITOR_DOMAIN: flower-zxwjtgozwhuz.${{ secrets.PRODUCTION_DOMAIN }}
+          DOCKER_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_DEFAULT_REGION }}.amazonaws.com/${{ github.repository }}
+          ENVIRONMENT_NAME: production
+          PROJECT_SLUG: artvaultasia-backend
+      - name: Notify about failure
+        if: ${{ failure() }}
+        run: |
+          cat << EOF > message.json
+          {"@type":"MessageCard","@context":"https://schema.org/extensions","summary":"Deploy backend production failed!","themeColor":"ff0000","title":"$GITHUB_REPOSITORY deploy production failed 💢💢💢!","sections":[{"facts":[{"name":"Repository:","value":"$GITHUB_REPOSITORY"},{"name":"Branch:","value":"$GITHUB_REF_NAME"},{"name":"Commit:","value":"$GITHUB_SHA"}]}],"potentialAction":[{"@type":"OpenUri","name":"View on GitHub","targets":[{"os":"default","uri":"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"}]}]}
+          EOF
+          curl -X POST ${{ secrets.TEAMS_WEBHOOK_DEPLOY_BACKEND }} --header 'Content-Type: application/json' -d @message.json
+
+  notify-deploy-success:
+    runs-on: ubuntu-latest
+    container: python:3.12-slim-bullseye
+    steps:
+      - name: Notify deploy success
+        run: |
+          apt-get update
+          apt-get -y install curl
+          cat << EOF > message.json
+          {
+            "@type": "MessageCard",
+            "@context": "https://schema.org/extensions",
+            "summary": "Deploy backend success!",
+            "themeColor": "1601FF",
+            "sections": [{
+              "activityTitle": "Eoh gateway backend - Deploy to production success 😍😍😍!",
+              "activitySubtitle": "${{ github.repository }}",
+              "activityImage": "https://github.com/${{ github.actor }}.png",
+              "facts": [{
+                  "name": "Triggering actor:",
+                  "value": "${{ github.actor }}"
+                },
+                {
+                  "name": "Version:",
+                  "value": "$GITHUB_REF_NAME"
+                }
+              ]
+            }],
+            "potentialAction": [{
+                "@type": "OpenUri",
+                "name": "View workflow",
+                "targets": [{
+                  "os": "default",
+                  "uri": "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+                }]
+              },
+              {
+                "@type": "OpenUri",
+                "name": "Open commit",
+                "targets": [{
+                  "os": "default",
+                  "uri": "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+                }]
+              }
+            ]
+          }
+          EOF
+          curl -X POST ${{ secrets.TEAMS_WEBHOOK_DEPLOY_BACKEND }} --header 'Content-Type: application/json' -d @message.json

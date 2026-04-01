@@ -1,0 +1,90 @@
+# [START kubernetes_deployment]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $PROJECT_SLUG-$ENVIRONMENT_NAME-worker-send-sms
+  namespace: default
+  labels:
+    app: $PROJECT_SLUG-$ENVIRONMENT_NAME-worker-send-sms
+    tags.datadoghq.com/env: $ENVIRONMENT_NAME
+spec:
+  selector:
+    matchLabels:
+      app: $PROJECT_SLUG-$ENVIRONMENT_NAME-worker-send-sms
+  template:
+    metadata:
+      annotations:
+        admission.datadoghq.com/enabled: "false"
+        ad.datadoghq.com/$PROJECT_SLUG-$ENVIRONMENT_NAME-worker-send-sms.tags: >-
+          {
+            "env":"$ENVIRONMENT_NAME"
+          }
+        ad.datadoghq.com/$PROJECT_SLUG-$ENVIRONMENT_NAME-worker-send-sms.logs: >-
+          [{
+            "source":"$PROJECT_SLUG",
+            "service":"$PROJECT_SLUG-worker-send-sms"
+          }]
+      labels:
+        app: $PROJECT_SLUG-$ENVIRONMENT_NAME-worker-send-sms
+        tags.datadoghq.com/env: $ENVIRONMENT_NAME
+    spec:
+      imagePullSecrets:
+        - name: $PROJECT_SLUG-docker
+      containers:
+        - name: $PROJECT_SLUG-$ENVIRONMENT_NAME-worker-send-sms
+          image: $DOCKER_IMAGE:$VERSION
+          command: [ "celery" ]
+          args: [ "-A", "root", "worker", "-Q", "send_sms,notification,email", "-l", "info" ]
+          resources:
+            requests:
+              memory: "300Mi"
+              cpu: "200m"
+            limits:
+              memory: "500Mi"
+              cpu: "300m"
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -c
+                - "DJANGO_SETTINGS_MODULE=root.$ENVIRONMENT_NAME.worker_ping celery -A root inspect ping -d celery@$HOSTNAME --timeout=10"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: ROLE
+              value: worker
+            - name: DD_TRACE_ENABLED
+              value: "true"
+            - name: DD_APM_ENABLED
+              value: "false"
+            - name: DD_ENV
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/env']
+            - name: DD_SERVICE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/service']
+            - name: DJANGO_SETTINGS_MODULE
+              value: root.$ENVIRONMENT_NAME.worker
+            - name: ENVIRONMENT
+              value: $ENVIRONMENT_NAME
+            - name: PROJECT_SLUG
+              value: $PROJECT_SLUG
+            - name: DOCKER_IMAGE
+              value: $DOCKER_IMAGE
+            - name: VERSION
+              value: $VERSION
+            - name: DB_CONN_MAX_AGE
+              value: "0"
+          envFrom:
+            - configMapRef:
+                name: web-config-map
+            - secretRef:
+                name: $PROJECT_SLUG-$ENVIRONMENT_NAME-secret
+
+# [END kubernetes_deployment]
