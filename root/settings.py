@@ -80,6 +80,12 @@ env = environ.Env(
     API_TOKEN_SENDBIRD=(str, '8870ec2679dd41234648fc8caf09e51664c7edc5'),
     # SENDBIRD_API_URL=(str, 'https://api-8343C0C0-0E9B-4428-8C96-6C9295E527F8.sendbird.com/v3'),
     # API_TOKEN_SENDBIRD=(str, '10b508f079bdb22a6a5e7da2eb18e3badedfaedb'),
+
+    VNPAY_TMN_CODE=(str, ''),
+    VNPAY_HASH_SECRET=(str, ''),
+    VNPAY_PAYMENT_URL=(str, 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
+    VNPAY_RETURN_URL=(str, ''),
+    VNPAY_DEFAULT_BANK_CODE=(str, 'VNPAYQR'),
 )
 
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')
@@ -372,6 +378,13 @@ CORS_ALLOW_HEADERS = list(default_headers)
 ALLOW_HEADERS_LIST = env('ALLOW_HEADERS_LIST')
 if ALLOW_HEADERS_LIST:
     CORS_ALLOW_HEADERS += ALLOW_HEADERS_LIST.split(',')
+
+# VNPAY PAY — điền VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_RETURN_URL trong .env.local (không commit secret).
+VNPAY_TMN_CODE = env('VNPAY_TMN_CODE')
+VNPAY_HASH_SECRET = env('VNPAY_HASH_SECRET')
+VNPAY_PAYMENT_URL = env('VNPAY_PAYMENT_URL')
+VNPAY_RETURN_URL = env('VNPAY_RETURN_URL')
+VNPAY_DEFAULT_BANK_CODE = env('VNPAY_DEFAULT_BANK_CODE')
 
 # http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html
 # https://docs.celeryq.dev/en/3.1/configuration.html
