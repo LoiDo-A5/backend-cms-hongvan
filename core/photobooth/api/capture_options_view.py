@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from core.photobooth.models import PhotoboothDevice
 from core.photobooth.serializers.capture_options import (
     PhotoboothBackgroundOptionSerializer,
+    PhotoboothDecorFrameOptionSerializer,
     PhotoboothFilterOptionSerializer,
 )
 
@@ -15,7 +16,7 @@ from core.photobooth.serializers.capture_options import (
 class CaptureOptionsView(APIView):
     """
     GET /api/photobooth/capture-options/?device_id=<id>
-    Trả về filters và backgrounds đã gán cho PhotoboothDevice (chỉ is_active).
+    Trả về filters, backgrounds và khung trang trí đã gán cho PhotoboothDevice (chỉ is_active).
     """
 
     permission_classes = [AllowAny]
@@ -25,7 +26,12 @@ class CaptureOptionsView(APIView):
         device_id = (request.query_params.get('device_id') or '').strip()
         if not device_id:
             return Response(
-                {'detail': 'Thiếu tham số device_id.', 'filters': [], 'backgrounds': []},
+                {
+                    'detail': 'Thiếu tham số device_id.',
+                    'filters': [],
+                    'backgrounds': [],
+                    'decor_frames': [],
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -37,12 +43,14 @@ class CaptureOptionsView(APIView):
                     'registered': False,
                     'filters': [],
                     'backgrounds': [],
+                    'decor_frames': [],
                 },
                 status=status.HTTP_200_OK,
             )
 
         filters_qs = device.filters.filter(is_active=True).order_by('sort_order', 'id')
         backgrounds_qs = device.backgrounds.filter(is_active=True).order_by('sort_order', 'id')
+        decor_qs = device.decor_frames.filter(is_active=True).order_by('sort_order', 'id')
 
         ctx = {'request': request}
         return Response(
@@ -54,6 +62,9 @@ class CaptureOptionsView(APIView):
                 ).data,
                 'backgrounds': PhotoboothBackgroundOptionSerializer(
                     backgrounds_qs, many=True, context=ctx
+                ).data,
+                'decor_frames': PhotoboothDecorFrameOptionSerializer(
+                    decor_qs, many=True, context=ctx
                 ).data,
             },
             status=status.HTTP_200_OK,

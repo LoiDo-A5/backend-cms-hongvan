@@ -49,6 +49,12 @@ class PhotoboothDevice(models.Model):
         blank=True,
         verbose_name='Backgrounds',
     )
+    decor_frames = models.ManyToManyField(
+        'PhotoboothDecorFrame',
+        related_name='devices',
+        blank=True,
+        verbose_name='Khung trang trí',
+    )
 
     class Meta:
         db_table = 'photobooth_device'
