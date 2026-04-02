@@ -42,15 +42,19 @@ def _client_ip(request):
 
 def _vnpay_configured() -> bool:
     return bool(
-        getattr(settings, 'VNPAY_TMN_CODE', '')
-        and getattr(settings, 'VNPAY_HASH_SECRET', '')
-        and getattr(settings, 'VNPAY_RETURN_URL', ''),
+        (getattr(settings, 'VNPAY_TMN_CODE', '') or '').strip()
+        and (getattr(settings, 'VNPAY_HASH_SECRET', '') or '').strip()
+        and (getattr(settings, 'VNPAY_RETURN_URL', '') or '').strip(),
     )
 
 
 class VnpayCreatePaymentView(APIView):
     """
     POST /api/payments/vnpay/create/
+
+    Trả ``payment_url`` tới cổng VNPAY (sandbox/production). Client hiển thị QR (URL dài) hoặc mở
+    trình duyệt; sau khi khách thanh toán, VNPAY gọi IPN ``/api/payments/vnpay/ipn/`` để xác nhận.
+
     Body JSON: { "package_id": 1 } hoặc { "package_code": "economy" }, optional "booth_id"
     """
 
@@ -101,10 +105,13 @@ class VnpayCreatePaymentView(APIView):
         create_date = now_vn.strftime('%Y%m%d%H%M%S')
         expire_date = expires_vn.strftime('%Y%m%d%H%M%S')
 
+        tmn = (settings.VNPAY_TMN_CODE or '').strip()
+        hash_secret = (settings.VNPAY_HASH_SECRET or '').strip()
+
         params = {
             'vnp_Version': '2.1.0',
             'vnp_Command': 'pay',
-            'vnp_TmnCode': settings.VNPAY_TMN_CODE,
+            'vnp_TmnCode': tmn,
             'vnp_Amount': str(order.amount_vnd * 100),
             'vnp_CurrCode': 'VND',
             'vnp_TxnRef': txn_ref,
@@ -120,7 +127,7 @@ class VnpayCreatePaymentView(APIView):
         if bank:
             params['vnp_BankCode'] = bank
 
-        secure = build_payment_secure_hash(params, settings.VNPAY_HASH_SECRET)
+        secure = build_payment_secure_hash(params, hash_secret)
         params['vnp_SecureHash'] = secure
 
         payment_url = build_payment_url(settings.VNPAY_PAYMENT_URL, params)
@@ -147,7 +154,12 @@ def _make_txn_ref() -> str:
 
 
 class VnpayIpnView(View):
-    """GET /api/payments/vnpay/ipn/ — VNPAY server-to-server."""
+    """
+    GET /api/payments/vnpay/ipn/ — VNPAY server-to-server (IPN).
+
+    Đăng ký URL đầy đủ trên cổng VNPAY (merchant): ví dụ
+    ``https://<domain-ngrok>/api/payments/vnpay/ipn/`` — phải HTTPS công khai.
+    """
 
     def get(self, request, *args, **kwargs):
         if not _vnpay_configured():
@@ -157,7 +169,21 @@ class VnpayIpnView(View):
         secure_hash = data.pop('vnp_SecureHash', None)
         data.pop('vnp_SecureHashType', None)
 
-        if not verify_callback_secure_hash(data, settings.VNPAY_HASH_SECRET, secure_hash):
+        if not data or not secure_hash:
+            logger.info(
+                'VNPAY IPN: thiếu tham số vnp_* (mở URL trống trong trình duyệt không phải IPN thật).'
+            )
+            return JsonResponse(
+                {
+                    'RspCode': '99',
+                    'Message': (
+                        'Thiếu tham số VNPAY. IPN chỉ hợp lệ khi GET có đầy đủ vnp_* (VNPAY gọi sau thanh toán). '
+                        'Không kiểm tra bằng cách mở URL trống trong trình duyệt.'
+                    ),
+                }
+            )
+
+        if not verify_callback_secure_hash(data, (settings.VNPAY_HASH_SECRET or '').strip(), secure_hash):
             logger.warning('VNPAY IPN invalid signature: %s', request.GET)
             return JsonResponse({'RspCode': '97', 'Message': 'Invalid signature'})
 
@@ -216,7 +242,9 @@ class VnpayReturnView(View):
 
         ok_sig = False
         if _vnpay_configured():
-            ok_sig = verify_callback_secure_hash(data, settings.VNPAY_HASH_SECRET, secure_hash)
+            ok_sig = verify_callback_secure_hash(
+                data, (settings.VNPAY_HASH_SECRET or '').strip(), secure_hash
+            )
 
         rc = data.get('vnp_ResponseCode', '')
         txn = data.get('vnp_TxnRef', '')

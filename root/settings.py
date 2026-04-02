@@ -90,16 +90,6 @@ env = environ.Env(
     VNPAY_DEFAULT_BANK_CODE=(str, ''),
     # Tên thiết bị hiển thị khi client không gửi `name` (POST /api/photobooth/devices/register/).
     PHOTOBOOTH_DEVICE_DEFAULT_NAME=(str, 'Photobooth'),
-    # VietQR.IO webhook: POST /api/payments/vietqr/webhook/ — để trống = không kiểm tra header.
-    VIETQR_WEBHOOK_SECRET=(str, ''),
-    # Đăng ký webhook lên VietQR (POST paymentGateway/confirmWebhook) — lấy từ my.vietqr.io.
-    VIETQR_CLIENT_ID=(str, ''),
-    VIETQR_API_KEY=(str, ''),
-    # Tùy chọn: URL đầy đủ tạo link; mặc định https://api.vietqr.io/v2/paymentRequests
-    VIETQR_LEGACY_PAYMENT_URL=(str, ''),
-    VIETQR_PAYMENT_TEMPLATE=(str, 'compact'),
-    VIETQR_CANCEL_URL=(str, ''),
-    VIETQR_SUCCESS_URL=(str, ''),
 )
 
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')
@@ -409,13 +399,6 @@ VNPAY_PAYMENT_URL = env('VNPAY_PAYMENT_URL')
 VNPAY_RETURN_URL = env('VNPAY_RETURN_URL')
 VNPAY_DEFAULT_BANK_CODE = env('VNPAY_DEFAULT_BANK_CODE')
 PHOTOBOOTH_DEVICE_DEFAULT_NAME = env('PHOTOBOOTH_DEVICE_DEFAULT_NAME')
-VIETQR_WEBHOOK_SECRET = env('VIETQR_WEBHOOK_SECRET')
-VIETQR_CLIENT_ID = env('VIETQR_CLIENT_ID')
-VIETQR_API_KEY = env('VIETQR_API_KEY')
-VIETQR_LEGACY_PAYMENT_URL = env('VIETQR_LEGACY_PAYMENT_URL')
-VIETQR_PAYMENT_TEMPLATE = env('VIETQR_PAYMENT_TEMPLATE')
-VIETQR_CANCEL_URL = env('VIETQR_CANCEL_URL')
-VIETQR_SUCCESS_URL = env('VIETQR_SUCCESS_URL')
 
 # http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html
 # https://docs.celeryq.dev/en/3.1/configuration.html

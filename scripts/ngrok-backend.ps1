@@ -1,4 +1,4 @@
-# Mở HTTPS công khai tới Django (port 8000) để VietQR / thiết bị ngoài gọi webhook.
+# Mở HTTPS công khai tới Django (port 8000) — dùng cho VNPAY IPN và callback công khai.
 #
 # Bước 0 — một lần: tạo tài khoản https://dashboard.ngrok.com → "Your Authtoken"
 #   ngrok config add-authtoken <TOKEN>
@@ -7,10 +7,11 @@
 # Bước 2 — chạy script này (terminal khác):
 #   .\scripts\ngrok-backend.ps1
 #
-# Copy URL dạng https://xxxx.ngrok-free.app → đăng ký webhook:
-#   python manage.py vietqr_register_webhook https://xxxx.ngrok-free.app/api/payments/vietqr/webhook/
+# Copy URL dạng https://xxxx.ngrok-free.app → đăng ký trên cổng VNPAY:
+#   IPN: https://xxxx.ngrok-free.app/api/payments/vnpay/ipn/
+#   Return URL (nếu cần): https://xxxx.ngrok-free.app/api/payments/vnpay/return/
 #
-# ALLOWED_HOSTS: thêm suffix .ngrok-free.app (xem comment trong .env.local).
+# ALLOWED_HOSTS: thêm suffix .ngrok-free.app (xem .env.local).
 
 param(
     [int]$Port = 8000
