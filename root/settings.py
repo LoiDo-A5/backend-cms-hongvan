@@ -53,6 +53,7 @@ env = environ.Env(
     ROOT_URLCONF=(str, 'root.urls'),
     DB_CONN_MAX_AGE=(int, 60),
     ALLOW_HEADERS_LIST=(str, ''),
+    CSRF_TRUSTED_ORIGINS=(str, ''),
 
     THROTTLE_RATES_USER_SEND_OTP=(str, '1/minute'),
     THROTTLE_RATES_USER_REGISTER=(str, '100/minute'),
@@ -89,6 +90,16 @@ env = environ.Env(
     VNPAY_DEFAULT_BANK_CODE=(str, ''),
     # Tên thiết bị hiển thị khi client không gửi `name` (POST /api/photobooth/devices/register/).
     PHOTOBOOTH_DEVICE_DEFAULT_NAME=(str, 'Photobooth'),
+    # VietQR.IO webhook: POST /api/payments/vietqr/webhook/ — để trống = không kiểm tra header.
+    VIETQR_WEBHOOK_SECRET=(str, ''),
+    # Đăng ký webhook lên VietQR (POST paymentGateway/confirmWebhook) — lấy từ my.vietqr.io.
+    VIETQR_CLIENT_ID=(str, ''),
+    VIETQR_API_KEY=(str, ''),
+    # Tùy chọn: URL đầy đủ tạo link; mặc định https://api.vietqr.io/v2/paymentRequests
+    VIETQR_LEGACY_PAYMENT_URL=(str, ''),
+    VIETQR_PAYMENT_TEMPLATE=(str, 'compact'),
+    VIETQR_CANCEL_URL=(str, ''),
+    VIETQR_SUCCESS_URL=(str, ''),
 )
 
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')
@@ -132,11 +143,24 @@ DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 DEBUG = env('DEBUG')
 IS_PRODUCTION = False
 
+
+def split_csv(value):
+    return [item.strip() for item in value.split(',') if item.strip()]
+
 ALLOWED_HOSTS_CONFIG = env('ALLOWED_HOSTS')  # type: str
 if ALLOWED_HOSTS_CONFIG:
-    ALLOWED_HOSTS = ALLOWED_HOSTS_CONFIG.split(',')
+    ALLOWED_HOSTS = split_csv(ALLOWED_HOSTS_CONFIG)
 else:
     ALLOWED_HOSTS = []
+
+CSRF_TRUSTED_ORIGINS = split_csv(env('CSRF_TRUSTED_ORIGINS'))
+if IS_LOCAL or DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        'https://*.ngrok-free.dev',
+        'https://*.ngrok.app',
+        'https://*.ngrok.io',
+    ])
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(CSRF_TRUSTED_ORIGINS))
 
 # Application definition
 
@@ -370,11 +394,7 @@ if env('SENTRY_DSN'):
 
 # https://github.com/ottoyiu/django-cors-headers
 CORS_ORIGIN_WHITELIST_STR = env('CORS_ORIGIN_WHITELIST')  # type: str
-CORS_ORIGIN_WHITELIST = [
-    o.strip()
-    for o in CORS_ORIGIN_WHITELIST_STR.split(',')
-    if o.strip()
-]
+CORS_ORIGIN_WHITELIST = split_csv(CORS_ORIGIN_WHITELIST_STR)
 CORS_ORIGIN_ALLOW_ALL = env('CORS_ORIGIN_ALLOW_ALL')
 
 CORS_ALLOW_HEADERS = list(default_headers)
@@ -389,6 +409,13 @@ VNPAY_PAYMENT_URL = env('VNPAY_PAYMENT_URL')
 VNPAY_RETURN_URL = env('VNPAY_RETURN_URL')
 VNPAY_DEFAULT_BANK_CODE = env('VNPAY_DEFAULT_BANK_CODE')
 PHOTOBOOTH_DEVICE_DEFAULT_NAME = env('PHOTOBOOTH_DEVICE_DEFAULT_NAME')
+VIETQR_WEBHOOK_SECRET = env('VIETQR_WEBHOOK_SECRET')
+VIETQR_CLIENT_ID = env('VIETQR_CLIENT_ID')
+VIETQR_API_KEY = env('VIETQR_API_KEY')
+VIETQR_LEGACY_PAYMENT_URL = env('VIETQR_LEGACY_PAYMENT_URL')
+VIETQR_PAYMENT_TEMPLATE = env('VIETQR_PAYMENT_TEMPLATE')
+VIETQR_CANCEL_URL = env('VIETQR_CANCEL_URL')
+VIETQR_SUCCESS_URL = env('VIETQR_SUCCESS_URL')
 
 # http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html
 # https://docs.celeryq.dev/en/3.1/configuration.html
