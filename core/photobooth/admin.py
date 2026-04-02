@@ -188,7 +188,41 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         'paid_at',
         'created_at',
     )
-    list_filter = ('status',)
+    list_filter = ('status', 'capture_package')
     search_fields = ('txn_ref', 'vnp_transaction_no', 'booth_id')
+    autocomplete_fields = ('capture_package',)
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('-id',)
+    fieldsets = (
+        (
+            'Đơn VNPAY',
+            {
+                'fields': (
+                    'txn_ref',
+                    'amount_vnd',
+                    'status',
+                    'expires_at',
+                    'paid_at',
+                ),
+            },
+        ),
+        (
+            'Gói chụp gắn với đơn',
+            {
+                'description': 'Mỗi đơn thanh toán gắn với đúng một gói chụp đã chọn trên booth.',
+                'fields': ('capture_package',),
+            },
+        ),
+        (
+            'Booth & VNPAY',
+            {
+                'fields': (
+                    'booth_id',
+                    'vnp_transaction_no',
+                    'vnp_response_code',
+                    'vnp_transaction_status',
+                ),
+            },
+        ),
+        ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
+    )

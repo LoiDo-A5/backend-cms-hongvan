@@ -138,7 +138,12 @@ class VnpayCreatePaymentView(APIView):
                 'order_id': txn_ref,
                 'amount_vnd': order.amount_vnd,
                 'expired_at': int(expires_at_utc.timestamp() * 1000),
-                'package': {'id': pkg.id, 'code': pkg.code, 'name': pkg.name},
+                'package': {
+                    'id': pkg.id,
+                    'code': pkg.code,
+                    'name': pkg.name,
+                    'print_count': pkg.print_count,
+                },
             },
             status=status.HTTP_201_CREATED,
         )
@@ -295,11 +300,19 @@ class PaymentStatusView(APIView):
             PaymentOrder.Status.PENDING: 'Pending',
         }.get(st, 'Pending')
 
+        pkg = order.capture_package
         payload = {
             'order_id': order.txn_ref,
             'status': api_status,
             'amount_vnd': order.amount_vnd,
             'transaction_no': order.vnp_transaction_no or None,
             'paid_at': order.paid_at.isoformat() if order.paid_at else None,
+            'print_count': pkg.print_count,
+            'capture_package': {
+                'id': pkg.id,
+                'code': pkg.code,
+                'name': pkg.name,
+                'print_count': pkg.print_count,
+            },
         }
         return Response(payload)

@@ -18,6 +18,8 @@ class PaymentOrder(models.Model):
         CapturePackage,
         on_delete=models.PROTECT,
         related_name='payment_orders',
+        verbose_name='Gói chụp đi kèm đơn',
+        help_text='Gói chụp mà khách đã chọn khi tạo đơn VNPAY này.',
     )
     status = models.CharField(
         max_length=16,
