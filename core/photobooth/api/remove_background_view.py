@@ -10,20 +10,26 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.photobooth.models import PhotoboothBackground
+from core.photobooth.models import PhotoboothDevice
 
 logger = logging.getLogger(__name__)
 
 
 class RemoveBackgroundSerializer(serializers.Serializer):
-    """Nhận ảnh chụp (base64 JPEG) + mã background để xóa phông và ghép nền mới."""
+    """Payload for remove-background: same device_id as capture-options / register."""
 
+    device_id = serializers.CharField(
+        max_length=128,
+        trim_whitespace=True,
+        help_text='Photobooth device UUID from client (must be registered).',
+    )
     image_base64 = serializers.CharField(
-        help_text='Ảnh gốc dạng base64 (data URI hoặc raw base64 JPEG/PNG).',
+        help_text='Original frame as base64 (data URI or raw JPEG/PNG base64).',
     )
     background_code = serializers.CharField(
         max_length=64,
-        help_text='Mã background đã chọn ở màn Tùy chỉnh.',
+        trim_whitespace=True,
+        help_text='Background code from Customize screen (must be assigned to device).',
     )
 
 
@@ -44,8 +50,16 @@ class RemoveBackgroundView(APIView):
         ser = RemoveBackgroundSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
 
+        device_id = ser.validated_data['device_id'].strip()
         raw_b64 = ser.validated_data['image_base64']
-        bg_code = ser.validated_data['background_code']
+        bg_code = ser.validated_data['background_code'].strip()
+
+        device = PhotoboothDevice.objects.filter(device_id=device_id).first()
+        if not device:
+            return Response(
+                {'detail': 'Device is not registered.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         # --- Decode ảnh gốc ---------------------------------------------------
         try:
@@ -53,17 +67,23 @@ class RemoveBackgroundView(APIView):
             subject_img = Image.open(io.BytesIO(image_data)).convert('RGBA')
         except Exception:
             return Response(
-                {'detail': 'Không thể giải mã ảnh base64.'},
+                {'detail': 'Invalid base64 image data.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # --- Lấy background ---------------------------------------------------
-        bg_obj = PhotoboothBackground.objects.filter(
-            code=bg_code, is_active=True,
+        # --- Background must be linked to this device (same as capture-options) ---
+        bg_obj = device.backgrounds.filter(
+            code__iexact=bg_code,
+            is_active=True,
         ).first()
         if not bg_obj or not bg_obj.image:
             return Response(
-                {'detail': f'Background "{bg_code}" không tồn tại hoặc chưa có ảnh.'},
+                {
+                    'detail': (
+                        f'Background "{bg_code}" is not available for this device '
+                        'or has no image file.'
+                    ),
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -75,15 +95,15 @@ class RemoveBackgroundView(APIView):
             output_bytes = rembg_remove(input_bytes)
             fg_img = Image.open(io.BytesIO(output_bytes)).convert('RGBA')
         except ImportError:
-            logger.error('rembg chưa được cài đặt. Chạy: pip install rembg[gpu]')
+            logger.error('rembg is not installed; run poetry install / pip install rembg[cpu]')
             return Response(
-                {'detail': 'Server chưa cài thư viện AI xóa phông (rembg).'},
+                {'detail': 'Server missing rembg (AI background removal).'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as exc:
-            logger.exception('Lỗi khi xóa phông nền bằng rembg')
+            logger.exception('rembg processing failed')
             return Response(
-                {'detail': f'Lỗi xử lý AI xóa phông: {exc}'},
+                {'detail': f'Background removal failed: {exc}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -99,9 +119,9 @@ class RemoveBackgroundView(APIView):
             composite = Image.alpha_composite(bg_img, fg_img)
             composite = composite.convert('RGB')
         except Exception as exc:
-            logger.exception('Lỗi khi ghép ảnh nền')
+            logger.exception('compositing failed')
             return Response(
-                {'detail': f'Lỗi ghép ảnh nền: {exc}'},
+                {'detail': f'Compositing failed: {exc}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
