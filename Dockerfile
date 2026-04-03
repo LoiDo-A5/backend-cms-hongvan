@@ -1,6 +1,6 @@
 ARG BUILD_ENV=dev
 
-FROM python:3.12-slim-bullseye as build
+FROM python:3.12-slim-bullseye AS build
 
 RUN apt-get update \
 &&  apt-get install --no-install-recommends build-essential apt-utils procps libgdal-dev gettext curl libffi-dev -y \
