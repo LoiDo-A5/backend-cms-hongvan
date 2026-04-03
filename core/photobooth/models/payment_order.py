@@ -4,7 +4,7 @@ from core.photobooth.models.capture_package import CapturePackage
 
 
 class PaymentOrder(models.Model):
-    """Đơn thanh toán VNPAY; `txn_ref` = vnp_TxnRef gửi sang cổng."""
+    """Đơn thanh toán: VNPAY (`txn_ref`), hoặc payOS (`payos_order_code`, `payos_payment_link_id`)."""
 
     class Status(models.TextChoices):
         PENDING = 'pending', 'Chờ thanh toán'
@@ -29,6 +29,9 @@ class PaymentOrder(models.Model):
     )
     booth_id = models.CharField(max_length=64, blank=True, default='')
 
+    payos_order_code = models.BigIntegerField(null=True, blank=True, db_index=True)
+    payos_payment_link_id = models.CharField(max_length=64, blank=True, default='')
+
     vnp_transaction_no = models.CharField(max_length=32, blank=True, default='')
     vnp_response_code = models.CharField(max_length=8, blank=True, default='')
     vnp_transaction_status = models.CharField(max_length=8, blank=True, default='')
@@ -42,8 +45,8 @@ class PaymentOrder(models.Model):
     class Meta:
         db_table = 'photobooth_payment_order'
         ordering = ['-id']
-        verbose_name = 'Đơn thanh toán VNPAY'
-        verbose_name_plural = 'Đơn thanh toán VNPAY'
+        verbose_name = 'Đơn thanh toán'
+        verbose_name_plural = 'Đơn thanh toán'
 
     def __str__(self):
         return f'{self.txn_ref} ({self.status})'
