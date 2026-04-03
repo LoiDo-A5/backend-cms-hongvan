@@ -30,7 +30,8 @@ services:
       - lan_access
       - default
   postgres:
-    image: postgres:15
+    # Alpine: manifest đa kiến trúc ổn định (amd64 + arm64). Không set platform để Docker chọn đúng CPU máy bạn.
+    image: postgres:15-alpine
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: password
@@ -45,14 +46,19 @@ services:
       timeout: 5s
       retries: 100
   redis:
-    image: redis:4.0
+    image: redis:7-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   mqtt:
-    image: eclipse-mosquitto:1.6.15
+    image: eclipse-mosquitto:2
     ports:
-      - "1884:1884"
+      - "1884:1883"
+    networks:
+      - lan_access
 
 volumes:
   postgres_db:
