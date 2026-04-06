@@ -232,6 +232,16 @@ class PhotoboothDeviceAdmin(admin.ModelAdmin):
     )
     readonly_fields = ('last_seen_at', 'created_at', 'updated_at')
 
+    class PaymentOrderInline(admin.TabularInline):
+        model = PaymentOrder
+        fk_name = 'device'
+        extra = 0
+        fields = ('txn_ref', 'amount_vnd', 'status', 'capture_package', 'paid_at', 'created_at')
+        readonly_fields = ('txn_ref', 'amount_vnd', 'status', 'capture_package', 'paid_at', 'created_at')
+        show_change_link = True
+
+    inlines = [PaymentOrderInline]
+
 
 @admin.register(PaymentOrder)
 class PaymentOrderAdmin(admin.ModelAdmin):
@@ -241,6 +251,7 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         'amount_vnd',
         'status',
         'capture_package',
+        'device',
         'booth_id',
         'image_count',
         'vnp_transaction_no',
@@ -248,9 +259,9 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         'paid_at',
         'created_at',
     )
-    list_filter = ('status', 'capture_package')
-    search_fields = ('txn_ref', 'vnp_transaction_no', 'booth_id')
-    autocomplete_fields = ('capture_package',)
+    list_filter = ('status', 'capture_package', 'device')
+    search_fields = ('txn_ref', 'vnp_transaction_no', 'booth_id', 'device__device_id', 'device__name')
+    autocomplete_fields = ('capture_package', 'device')
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('-id',)
 
@@ -297,6 +308,12 @@ class PaymentOrderAdmin(admin.ModelAdmin):
             {
                 'description': 'Mỗi đơn thanh toán gắn với đúng một gói chụp đã chọn trên booth.',
                 'fields': ('capture_package',),
+            },
+        ),
+        (
+            'Thiết bị',
+            {
+                'fields': ('device',),
             },
         ),
         (

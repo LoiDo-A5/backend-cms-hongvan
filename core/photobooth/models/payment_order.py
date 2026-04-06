@@ -21,6 +21,15 @@ class PaymentOrder(models.Model):
         verbose_name='Gói chụp đi kèm đơn',
         help_text='Gói chụp mà khách đã chọn khi tạo đơn VNPAY này.',
     )
+    device = models.ForeignKey(
+        'photobooth.PhotoboothDevice',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payment_orders',
+        verbose_name='Thiết bị photobooth',
+        help_text='Thiết bị đã tạo đơn thanh toán này.',
+    )
     status = models.CharField(
         max_length=16,
         choices=Status.choices,

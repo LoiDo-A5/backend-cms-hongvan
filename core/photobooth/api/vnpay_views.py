@@ -15,7 +15,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.photobooth.models import CapturePackage, PaymentOrder
+from core.photobooth.models import CapturePackage, PaymentOrder, PhotoboothDevice
 from core.photobooth.vnpay import (
     build_payment_secure_hash,
     build_payment_url,
@@ -71,6 +71,7 @@ class VnpayCreatePaymentView(APIView):
         package_id = request.data.get('package_id')
         package_code = request.data.get('package_code')
         booth_id = (request.data.get('booth_id') or '')[:64]
+        device_id = (request.data.get('device_id') or '').strip()
 
         pkg = None
         if package_id is not None:
@@ -84,6 +85,11 @@ class VnpayCreatePaymentView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Tìm thiết bị theo device_id (nếu có)
+        device = None
+        if device_id:
+            device = PhotoboothDevice.objects.filter(device_id=device_id, is_active=True).first()
+
         now_vn = _now_vietnam()
         expires_vn = now_vn + timedelta(minutes=15)
         # Lưu DB theo UTC (USE_TZ) — cùng thời điểm với expires_vn
@@ -94,6 +100,7 @@ class VnpayCreatePaymentView(APIView):
             txn_ref=txn_ref,
             amount_vnd=pkg.amount_vnd,
             capture_package=pkg,
+            device=device,
             booth_id=booth_id,
             expires_at=expires_at_utc,
             status=PaymentOrder.Status.PENDING,
