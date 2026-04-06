@@ -254,13 +254,14 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         'device',
         'booth_id',
         'image_count',
-        'vnp_transaction_no',
+        'payos_order_code',
+        'payos_payment_link_id',
         'expires_at',
         'paid_at',
         'created_at',
     )
     list_filter = ('status', 'capture_package', 'device')
-    search_fields = ('txn_ref', 'vnp_transaction_no', 'booth_id', 'device__device_id', 'device__name')
+    search_fields = ('txn_ref', 'booth_id', 'payos_payment_link_id', 'payos_order_code', 'device__device_id', 'device__name')
     autocomplete_fields = ('capture_package', 'device')
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('-id',)
@@ -292,12 +293,14 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         return obj._image_count
     fieldsets = (
         (
-            'Đơn VNPAY',
+            'Đơn thanh toán',
             {
                 'fields': (
                     'txn_ref',
                     'amount_vnd',
                     'status',
+                    'payos_order_code',
+                    'payos_payment_link_id',
                     'expires_at',
                     'paid_at',
                 ),
@@ -317,14 +320,9 @@ class PaymentOrderAdmin(admin.ModelAdmin):
             },
         ),
         (
-            'Booth & VNPAY',
+            'Booth',
             {
-                'fields': (
-                    'booth_id',
-                    'vnp_transaction_no',
-                    'vnp_response_code',
-                    'vnp_transaction_status',
-                ),
+                'fields': ('booth_id',),
             },
         ),
         ('Hệ thống', {'fields': ('created_at', 'updated_at')}),

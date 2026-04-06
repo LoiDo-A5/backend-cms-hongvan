@@ -4,8 +4,6 @@ import json
 import logging
 import secrets
 import uuid
-import urllib.error
-import urllib.request
 from datetime import timedelta
 from datetime import timezone as dt_timezone
 from zoneinfo import ZoneInfo
@@ -14,71 +12,43 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.utils.html import escape
 from django.utils import timezone
+from payos import PayOS, APIError as PayOSAPIError
+from payos.types import CreatePaymentLinkRequest
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.photobooth.models import CapturePackage, PaymentOrder
-from core.photobooth.payos import (
-    build_create_payment_signature,
-    normalize_payos_description,
-    verify_webhook_signature,
-)
+from core.photobooth.models.photobooth_device import PhotoboothDevice
 
 logger = logging.getLogger(__name__)
 
 _VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
 
-PAYOS_API_BASE = 'https://api-merchant.payos.vn'
-# payOS orderCode kiểu Int32; cần duy nhất trên kênh — không dùng trực tiếp id DB (dễ trùng lịch sử → 403/1010).
 _PAYOS_ORDER_CODE_MAX = 2_147_483_647
+
+_payos_client = None
+
+
+def _get_payos_client() -> PayOS:
+    """Lazy-init payOS client singleton (tránh lỗi khi settings chưa sẵn sàng lúc import)."""
+    global _payos_client
+    if _payos_client is None:
+        _payos_client = PayOS(
+            client_id=(settings.PAYOS_CLIENT_ID or '').strip(),
+            api_key=(settings.PAYOS_API_KEY or '').strip(),
+            checksum_key=(settings.PAYOS_CHECKSUM_KEY or '').strip(),
+        )
+    return _payos_client
 
 
 def _allocate_payos_order_code() -> int:
-    """Mã Int32 phân bố rộng (UUID) — tránh trùng mã đã dùng trên payOS hoặc trùng vùng nhỏ."""
     for _ in range(64):
         n = (uuid.uuid4().int % (_PAYOS_ORDER_CODE_MAX - 1)) + 1
         if not PaymentOrder.objects.filter(payos_order_code=n).exists():
             return n
     raise RuntimeError('Không sinh được mã orderCode payOS duy nhất')
-
-
-def _payos_error_hint(raw: dict) -> str:
-    desc = str(raw.get('desc') or '')
-    code = str(raw.get('code') or '')
-    if '1010' in desc:
-        # payOS không công bố chi tiết 403/1010; thực tế hay gặp khi tài khoản/kênh không đủ điều kiện tạo link.
-        return (
-            'Lỗi payOS 1010 (Forbidden): cổng từ chối tạo link — thường không phải do code tích hợp. '
-            'Kiểm tra trên my.payos.vn theo thứ tự: (1) Tổ chức đã xác thực. '
-            '(2) Đã liên kết ít nhất một tài khoản ngân hàng với payOS. '
-            '(3) Kênh thanh toán đã tạo xong; Client ID / API Key / Checksum copy đúng cùng một kênh. '
-            '(4) Còn gói giao dịch (hết gói thì bị hạn chế tạo đơn). '
-            '(5) Nếu vẫn lỗi: gửi support@payos.vn kèm mã lỗi 1010 và Client ID (không gửi API Key).'
-        )
-    if code == '403':
-        return (
-            'HTTP 403 từ payOS: không có quyền tạo link — thường do kênh/khóa API hoặc tài khoản chưa đủ điều kiện '
-            '(xác thực tổ chức, liên kết NH, gói giao dịch). Xem hint cho mã 1010 nếu desc có chứa 1010.'
-        )
-    return (
-        'Thường gặp: sai Checksum Key / Client ID / API Key so với kênh trên my.payos.vn; '
-        'chữ ký không khớp; returnUrl/cancelUrl không hợp lệ (thử HTTPS + ngrok).'
-    )
-
-
-def _payos_api_success(raw: dict) -> bool:
-    """payOS trả code === '00' (string) khi thành công; có thể gặp biến thể kiểu."""
-    if not isinstance(raw, dict):
-        return False
-    c = raw.get('code')
-    if c is None:
-        return False
-    s = str(c).strip()
-    if s == '00' or s == '0':
-        return True
-    return False
 
 
 def _now_vietnam():
@@ -95,42 +65,19 @@ def _payos_configured() -> bool:
     )
 
 
-def _post_payos_payment_request(payload: dict) -> dict:
-    client_id = (settings.PAYOS_CLIENT_ID or '').strip()
-    api_key = (settings.PAYOS_API_KEY or '').strip()
-    url = f'{PAYOS_API_BASE}/v2/payment-requests'
-    body = json.dumps(payload, ensure_ascii=False).encode('utf-8')
-    headers = {
-        'Content-Type': 'application/json',
-        'x-client-id': client_id,
-        'x-api-key': api_key,
-    }
-    partner = (getattr(settings, 'PAYOS_PARTNER_CODE', '') or '').strip()
-    if partner:
-        headers['x-partner-code'] = partner
-    req = urllib.request.Request(url, data=body, headers=headers, method='POST')
-    try:
-        with urllib.request.urlopen(req, timeout=45) as resp:
-            return json.loads(resp.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode('utf-8', errors='replace')
-        logger.warning('payOS create HTTP %s: %s', e.code, err_body[:500])
-        try:
-            return json.loads(err_body)
-        except json.JSONDecodeError:
-            return {'code': str(e.code), 'desc': err_body[:200]}
-    except urllib.error.URLError as e:
-        logger.exception('payOS create network error')
-        raise RuntimeError(f'Không kết nối được payOS: {e}') from e
+def _normalize_description(text: str) -> str:
+    """payOS description tối đa 25 ký tự, chỉ ASCII + số."""
+    import re
+    cleaned = re.sub(r'[^A-Za-z0-9 ]', '', text)
+    return cleaned[:25].strip() or 'Photobooth'
 
 
 class PayosCreatePaymentView(APIView):
     """
     POST /api/payments/payos/create/
 
-    Body: { "package_id": 1 } hoặc { "package_code": "economy" }, optional "booth_id"
-    Trả checkout_url + qr_code (VietQR). order_id = txn_ref (id DB dạng chuỗi) để poll;
-    payOS nhận orderCode riêng (payos_order_code) để tránh trùng mã trên cổng.
+    Body: { "package_id": 1, "device_id": "...", "booth_id": "..." }
+    Trả checkout_url + qr_code (VietQR). order_id = txn_ref để poll.
     """
 
     permission_classes = [AllowAny]
@@ -151,6 +98,11 @@ class PayosCreatePaymentView(APIView):
         package_id = request.data.get('package_id')
         package_code = request.data.get('package_code')
         booth_id = (request.data.get('booth_id') or '')[:64]
+        device_id = (request.data.get('device_id') or '').strip()
+
+        device = None
+        if device_id:
+            device = PhotoboothDevice.objects.filter(device_id=device_id, is_active=True).first()
 
         pkg = None
         if package_id is not None:
@@ -173,6 +125,7 @@ class PayosCreatePaymentView(APIView):
             txn_ref=tmp_txn,
             amount_vnd=pkg.amount_vnd,
             capture_package=pkg,
+            device=device,
             booth_id=booth_id,
             expires_at=expires_at_utc,
             status=PaymentOrder.Status.PENDING,
@@ -187,45 +140,52 @@ class PayosCreatePaymentView(APIView):
         order.payos_order_code = poc
         order.save(update_fields=['txn_ref', 'payos_order_code', 'updated_at'])
 
-        checksum = (settings.PAYOS_CHECKSUM_KEY or '').strip()
         return_url = (settings.PAYOS_RETURN_URL or '').strip()
         cancel_url = (settings.PAYOS_CANCEL_URL or '').strip()
-        desc = normalize_payos_description(f'{pkg.code} {pkg.name}')
+        desc = _normalize_description(f'{pkg.code} {pkg.name}')
 
-        expired_at_ts = int(expires_at_utc.timestamp())
-        signature = build_create_payment_signature(
-            amount=order.amount_vnd,
-            cancel_url=cancel_url,
+        payment_data = CreatePaymentLinkRequest(
+            order_code=int(order.payos_order_code),
+            amount=int(order.amount_vnd),
             description=desc,
-            order_code=order.payos_order_code,
+            cancel_url=cancel_url,
             return_url=return_url,
-            checksum_key=checksum,
         )
 
-        payload = {
-            'orderCode': int(order.payos_order_code),
-            'amount': int(order.amount_vnd),
-            'description': desc,
-            'cancelUrl': cancel_url,
-            'returnUrl': return_url,
-            'signature': signature,
-        }
-        if getattr(settings, 'PAYOS_SEND_EXPIRED_AT', False):
-            payload['expiredAt'] = expired_at_ts
-
         logger.info(
-            'payOS create: orderCode=%s amount=%s desc=%r send_expired=%s',
+            'payOS create: orderCode=%s amount=%s desc=%r',
             order.payos_order_code,
             order.amount_vnd,
             desc,
-            getattr(settings, 'PAYOS_SEND_EXPIRED_AT', False),
         )
 
         try:
-            raw = _post_payos_payment_request(payload)
-        except RuntimeError as e:
+            client = _get_payos_client()
+            response = client.payment_requests.create(payment_data=payment_data)
+        except PayOSAPIError as e:
             order.delete()
-            logger.error('payOS create: network error %s', e)
+            logger.error(
+                'payOS create rejected: code=%s desc=%s',
+                e.error_code,
+                e.error_desc,
+            )
+            return Response(
+                {
+                    'detail': e.error_desc or 'payOS từ chối tạo link.',
+                    'payos_code': e.error_code,
+                    'payos_desc': e.error_desc,
+                    'hint': (
+                        'Kiểm tra trên my.payos.vn: (1) Tổ chức đã xác thực. '
+                        '(2) Đã liên kết tài khoản ngân hàng. '
+                        '(3) Client ID / API Key / Checksum copy đúng cùng một kênh. '
+                        '(4) Còn gói giao dịch.'
+                    ),
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except Exception as e:
+            order.delete()
+            logger.exception('payOS create: unexpected error')
             return Response(
                 {
                     'detail': str(e),
@@ -234,33 +194,12 @@ class PayosCreatePaymentView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
-        if not _payos_api_success(raw):
-            order.delete()
-            msg = raw.get('desc') or raw.get('message') or 'payOS từ chối tạo link.'
-            logger.error(
-                'payOS create rejected: code=%s desc=%s raw=%s',
-                raw.get('code'),
-                raw.get('desc'),
-                raw,
-            )
-            return Response(
-                {
-                    'detail': msg,
-                    'payos_code': raw.get('code'),
-                    'payos_desc': raw.get('desc'),
-                    'payos': raw,
-                    'hint': _payos_error_hint(raw),
-                },
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
-
-        data = raw.get('data') or {}
-        checkout_url = (data.get('checkoutUrl') or '').strip()
-        qr_code = (data.get('qrCode') or '').strip()
-        link_id = (data.get('paymentLinkId') or '')[:64]
+        checkout_url = getattr(response, 'checkout_url', '') or ''
+        qr_code = getattr(response, 'qr_code', '') or ''
+        link_id = getattr(response, 'payment_link_id', '') or ''
 
         if link_id:
-            order.payos_payment_link_id = link_id
+            order.payos_payment_link_id = str(link_id)[:64]
             order.save(update_fields=['payos_payment_link_id', 'updated_at'])
 
         return Response(
@@ -294,35 +233,21 @@ class PayosWebhookView(APIView):
             return Response({'detail': 'payOS not configured'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
         try:
-            body = request.data if isinstance(request.data, dict) else {}
+            raw_body = request.body
         except Exception:
-            body = {}
-
-        sig = (body.get('signature') or '').strip()
-        data = body.get('data')
-        if not isinstance(data, dict):
             return Response({'detail': 'Invalid payload'}, status=status.HTTP_400_BAD_REQUEST)
 
-        checksum = (settings.PAYOS_CHECKSUM_KEY or '').strip()
-        if not verify_webhook_signature(data, sig, checksum):
-            logger.warning('payOS webhook invalid signature')
+        # Verify webhook signature using official SDK
+        try:
+            client = _get_payos_client()
+            webhook_data = client.webhooks.verify(raw_body)
+        except Exception as e:
+            logger.warning('payOS webhook verification failed: %s', e)
             return Response({'detail': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        if body.get('code') != '00':
-            return Response({'detail': 'ignored'}, status=status.HTTP_200_OK)
-        if body.get('success') is False:
-            return Response({'detail': 'ignored'}, status=status.HTTP_200_OK)
-
-        try:
-            order_code = int(data.get('orderCode'))
-        except (TypeError, ValueError):
-            return Response({'detail': 'Bad orderCode'}, status=status.HTTP_400_BAD_REQUEST)
-
-        amount = data.get('amount')
-        try:
-            amount = int(amount)
-        except (TypeError, ValueError):
-            return Response({'detail': 'Bad amount'}, status=status.HTTP_400_BAD_REQUEST)
+        # Extract data from verified WebhookData (attributes are snake_case)
+        order_code = webhook_data.order_code
+        amount = webhook_data.amount
 
         order = (
             PaymentOrder.objects.filter(payos_order_code=order_code).first()
@@ -348,10 +273,9 @@ class PayosWebhookView(APIView):
             order.save(update_fields=['status', 'updated_at'])
             return Response({'detail': 'Expired'}, status=status.HTTP_200_OK)
 
-        inner_code = (data.get('code') or '')[:8]
-        ref = (data.get('reference') or data.get('paymentLinkId') or '')[:64]
-        order.vnp_response_code = inner_code or '00'
+        ref = str(webhook_data.reference or webhook_data.payment_link_id or '')[:64]
         order.vnp_transaction_no = ref
+        order.vnp_response_code = '00'
         order.vnp_transaction_status = '00'
         order.status = PaymentOrder.Status.PAID
         order.paid_at = timezone.now()

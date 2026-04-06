@@ -88,6 +88,12 @@ env = environ.Env(
     VNPAY_RETURN_URL=(str, ''),
     # Để trống = khách chọn cổng trên trang VNPAY. VNPAYQR chỉ bật khi merchant sandbox đã bật kênh QR; nếu không dễ gặp code 70 (sai chữ ký) tùy cấu hình cổng.
     VNPAY_DEFAULT_BANK_CODE=(str, ''),
+    # payOS — payment gateway thay thế VNPAY (https://payos.vn)
+    PAYOS_CLIENT_ID=(str, ''),
+    PAYOS_API_KEY=(str, ''),
+    PAYOS_CHECKSUM_KEY=(str, ''),
+    PAYOS_RETURN_URL=(str, ''),
+    PAYOS_CANCEL_URL=(str, ''),
     # Tên thiết bị hiển thị khi client không gửi `name` (POST /api/photobooth/devices/register/).
     PHOTOBOOTH_DEVICE_DEFAULT_NAME=(str, 'Photobooth'),
 )
@@ -398,6 +404,14 @@ VNPAY_HASH_SECRET = env('VNPAY_HASH_SECRET')
 VNPAY_PAYMENT_URL = env('VNPAY_PAYMENT_URL')
 VNPAY_RETURN_URL = env('VNPAY_RETURN_URL')
 VNPAY_DEFAULT_BANK_CODE = env('VNPAY_DEFAULT_BANK_CODE')
+
+# payOS — payment gateway (https://payos.vn)
+PAYOS_CLIENT_ID = env('PAYOS_CLIENT_ID')
+PAYOS_API_KEY = env('PAYOS_API_KEY')
+PAYOS_CHECKSUM_KEY = env('PAYOS_CHECKSUM_KEY')
+PAYOS_RETURN_URL = env('PAYOS_RETURN_URL')
+PAYOS_CANCEL_URL = env('PAYOS_CANCEL_URL')
+
 PHOTOBOOTH_DEVICE_DEFAULT_NAME = env('PHOTOBOOTH_DEVICE_DEFAULT_NAME')
 
 # http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html
