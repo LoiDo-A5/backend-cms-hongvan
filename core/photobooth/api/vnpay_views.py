@@ -294,6 +294,11 @@ class PaymentStatusView(APIView):
 
         now = timezone.now()
         st = order.status
+
+        # ── PayOS fallback: nếu PENDING + có payos_order_code, hỏi trực tiếp payOS API ──
+        if st == PaymentOrder.Status.PENDING and order.payos_order_code:
+            st = self._sync_payos_status(order, now) or st
+
         if st == PaymentOrder.Status.PENDING and now > order.expires_at:
             PaymentOrder.objects.filter(pk=order.pk, status=PaymentOrder.Status.PENDING).update(
                 status=PaymentOrder.Status.EXPIRED
@@ -323,3 +328,51 @@ class PaymentStatusView(APIView):
             },
         }
         return Response(payload)
+
+    # ── helpers ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _sync_payos_status(order, now):
+        """Hỏi payOS API xem đơn đã thanh toán chưa; cập nhật DB nếu PAID."""
+        try:
+            from core.photobooth.api.payos_views import _get_payos_client
+
+            client = _get_payos_client()
+            info = client.getPaymentLinkInformation(int(order.payos_order_code))
+            payos_status = getattr(info, 'status', '') or ''
+
+            if payos_status == 'PAID':
+                ref = str(getattr(info, 'id', '') or '')[:64]
+                PaymentOrder.objects.filter(
+                    pk=order.pk,
+                    status=PaymentOrder.Status.PENDING,
+                ).update(
+                    status=PaymentOrder.Status.PAID,
+                    paid_at=now,
+                    vnp_transaction_no=ref,
+                    vnp_response_code='00',
+                    vnp_transaction_status='00',
+                )
+                order.refresh_from_db()
+                return PaymentOrder.Status.PAID
+
+            if payos_status == 'CANCELLED':
+                PaymentOrder.objects.filter(
+                    pk=order.pk,
+                    status=PaymentOrder.Status.PENDING,
+                ).update(status=PaymentOrder.Status.FAILED)
+                order.refresh_from_db()
+                return PaymentOrder.Status.FAILED
+
+            if payos_status == 'EXPIRED':
+                PaymentOrder.objects.filter(
+                    pk=order.pk,
+                    status=PaymentOrder.Status.PENDING,
+                ).update(status=PaymentOrder.Status.EXPIRED)
+                order.refresh_from_db()
+                return PaymentOrder.Status.EXPIRED
+
+        except Exception as exc:
+            logger.debug('payOS status check failed for order %s: %s', order.pk, exc)
+
+        return None

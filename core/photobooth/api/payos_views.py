@@ -242,12 +242,17 @@ class PayosWebhookView(APIView):
             client = _get_payos_client()
             webhook_data = client.webhooks.verify(raw_body)
         except Exception as e:
-            logger.warning('payOS webhook verification failed: %s', e)
-            return Response({'detail': 'Invalid signature'}, status=status.HTTP_401_UNAUTHORIZED)
+            # PayOS confirmWebhook gửi ping kiểm tra — có thể không verify được.
+            # Trả 200 để PayOS xác nhận URL hợp lệ, nhưng không xử lý dữ liệu.
+            logger.info('payOS webhook verification failed (likely confirm ping): %s', e)
+            return Response({'ok': True}, status=status.HTTP_200_OK)
 
-        # Extract data from verified WebhookData (attributes are snake_case)
+        # payOS gửi confirmation ping khi đăng ký webhook (orderCode=0, amount=0).
         order_code = webhook_data.order_code
         amount = webhook_data.amount
+        if order_code == 0:
+            logger.info('payOS webhook confirmation ping received — OK')
+            return Response({'ok': True}, status=status.HTTP_200_OK)
 
         order = (
             PaymentOrder.objects.filter(payos_order_code=order_code).first()
