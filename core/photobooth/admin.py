@@ -4,6 +4,7 @@ from django.utils.html import format_html
 
 from core.photobooth.models import (
     CapturePackage,
+    ImagePhotobooth,
     PaymentOrder,
     PhotoboothBackground,
     PhotoboothDecorFrame,
@@ -241,6 +242,7 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         'status',
         'capture_package',
         'booth_id',
+        'image_count',
         'vnp_transaction_no',
         'expires_at',
         'paid_at',
@@ -251,6 +253,32 @@ class PaymentOrderAdmin(admin.ModelAdmin):
     autocomplete_fields = ('capture_package',)
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('-id',)
+
+    class ImageInline(admin.TabularInline):
+        model = ImagePhotobooth
+        extra = 0
+        readonly_fields = ('image_thumb', 'round_index', 'photo_index', 'created_at')
+        fields = ('image_thumb', 'image', 'round_index', 'photo_index', 'created_at')
+
+        @admin.display(description='Xem trước')
+        def image_thumb(self, obj):
+            if obj.image:
+                return format_html(
+                    '<img src="{}" width="80" height="80" alt="" '
+                    'style="object-fit:cover;border-radius:4px;border:1px solid #ddd;" />',
+                    obj.image.url,
+                )
+            return '—'
+
+    inlines = [ImageInline]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(_image_count=Count('images', distinct=True))
+
+    @admin.display(description='Ảnh', ordering='_image_count')
+    def image_count(self, obj):
+        return obj._image_count
     fieldsets = (
         (
             'Đơn VNPAY',
@@ -284,3 +312,44 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         ),
         ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
     )
+
+
+@admin.register(ImagePhotobooth)
+class ImagePhotoboothAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'image_thumb',
+        'payment_order',
+        'round_index',
+        'photo_index',
+        'created_at',
+    )
+    list_filter = ('round_index',)
+    search_fields = ('payment_order__txn_ref',)
+    autocomplete_fields = ('payment_order',)
+    readonly_fields = ('image_thumb_large', 'created_at')
+    ordering = ('-id',)
+    fieldsets = (
+        (None, {'fields': ('payment_order', 'image', 'image_thumb_large')}),
+        ('Vị trí', {'fields': ('round_index', 'photo_index')}),
+        ('Hệ thống', {'fields': ('created_at',)}),
+    )
+
+    @admin.display(description='Ảnh')
+    def image_thumb(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" width="44" height="44" alt="" '
+                'style="object-fit:cover;border-radius:4px;border:1px solid #ddd;" />',
+                obj.image.url,
+            )
+        return '—'
+
+    @admin.display(description='Xem trước')
+    def image_thumb_large(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="max-width:320px;max-height:320px;object-fit:contain;border-radius:8px;border:1px solid #ddd;" />',
+                obj.image.url,
+            )
+        return '—'
