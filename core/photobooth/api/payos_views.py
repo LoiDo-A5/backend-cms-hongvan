@@ -117,7 +117,7 @@ class PayosCreatePaymentView(APIView):
             )
 
         now_vn = _now_vietnam()
-        expires_vn = now_vn + timedelta(minutes=15)
+        expires_vn = now_vn + timedelta(minutes=5)
         expires_at_utc = expires_vn.astimezone(dt_timezone.utc)
         tmp_txn = f'TMP-{secrets.token_hex(12)}'
 
