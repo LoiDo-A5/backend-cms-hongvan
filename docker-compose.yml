@@ -9,6 +9,7 @@ services:
       args:
         BUILD_ENV: dev
       target: container-dev
+      network: host
     # Tránh mount .venv Windows → Linux: poetry run tạo lại .venv trống → không có Django.
     # Khớp Dockerfile (poetry config virtualenvs.create false): dùng Python system trong image.
     environment:
