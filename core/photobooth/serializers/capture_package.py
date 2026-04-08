@@ -8,6 +8,7 @@ class CapturePackageSerializer(serializers.ModelSerializer):
 
     amount = serializers.IntegerField(source='amount_vnd', read_only=True)
     lines = serializers.SerializerMethodField()
+    lines_en = serializers.SerializerMethodField()
 
     class Meta:
         model = CapturePackage
@@ -15,10 +16,12 @@ class CapturePackageSerializer(serializers.ModelSerializer):
             'id',
             'code',
             'name',
+            'name_en',
             'amount',
             'print_count',
             'include_online_file',
             'lines',
+            'lines_en',
             'sort_order',
             'is_active',
         )
@@ -28,4 +31,10 @@ class CapturePackageSerializer(serializers.ModelSerializer):
         lines = [obj.description_line_1]
         if obj.description_line_2:
             lines.append(obj.description_line_2)
+        return lines
+
+    def get_lines_en(self, obj):
+        lines = [obj.description_line_1_en] if obj.description_line_1_en else []
+        if obj.description_line_2_en:
+            lines.append(obj.description_line_2_en)
         return lines

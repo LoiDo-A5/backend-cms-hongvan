@@ -13,6 +13,7 @@ class CapturePackage(models.Model):
         help_text='Mã cố định, ví dụ: economy, basic, premium',
     )
     name = models.CharField(max_length=120)
+    name_en = models.CharField(max_length=120, blank=True, verbose_name='Name (EN)')
     amount_vnd = models.PositiveIntegerField(help_text='Số tiền VND (vd: 59000)')
     print_count = models.PositiveSmallIntegerField(
         default=1,
@@ -23,7 +24,9 @@ class CapturePackage(models.Model):
         verbose_name='Nhận file online',
     )
     description_line_1 = models.CharField(max_length=255)
+    description_line_1_en = models.CharField(max_length=255, blank=True, verbose_name='Description line 1 (EN)')
     description_line_2 = models.CharField(max_length=255, blank=True)
+    description_line_2_en = models.CharField(max_length=255, blank=True, verbose_name='Description line 2 (EN)')
     sort_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
