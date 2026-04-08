@@ -55,6 +55,8 @@ env = environ.Env(
     ALLOW_HEADERS_LIST=(str, ''),
     CSRF_TRUSTED_ORIGINS=(str, ''),
 
+    THROTTLE_RATES_ANON=(str, '3000/hour'),
+    THROTTLE_RATES_USER=(str, '3000/hour'),
     THROTTLE_RATES_USER_SEND_OTP=(str, '1/minute'),
     THROTTLE_RATES_USER_REGISTER=(str, '100/minute'),
     THROTTLE_RATES_USER_VERIFY_OTP=(str, '100/day'),
@@ -426,6 +428,8 @@ CELERY_WORKER_CONCURRENCY = env('CELERY_WORKER_CONCURRENCY')
 
 INTERNAL_IPS = env('INTERNAL_IPS').split(',')  # type: list
 
+THROTTLE_RATES_ANON = env('THROTTLE_RATES_ANON')
+THROTTLE_RATES_USER = env('THROTTLE_RATES_USER')
 THROTTLE_RATES_USER_VERIFY_OTP = env('THROTTLE_RATES_USER_VERIFY_OTP')
 THROTTLE_RATES_USER_SEND_OTP = env('THROTTLE_RATES_USER_SEND_OTP')
 THROTTLE_RATES_USER_REGISTER = env('THROTTLE_RATES_USER_REGISTER')
@@ -436,9 +440,13 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
     'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
         'rest_framework.throttling.ScopedRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
+        'anon': THROTTLE_RATES_ANON,
+        'user': THROTTLE_RATES_USER,
         'user_send_otp': THROTTLE_RATES_USER_SEND_OTP,
         'user_verify_otp': THROTTLE_RATES_USER_VERIFY_OTP,
         'dj_rest_auth': '1/s',
