@@ -124,7 +124,7 @@ class VnpayCreatePaymentView(APIView):
             'vnp_TxnRef': txn_ref,
             'vnp_OrderInfo': order_info,
             'vnp_OrderType': 'other',
-            'vnp_Locale': 'vn',
+            'vnp_Locale': request.data.get('locale', 'vn') if request.data.get('locale') in ('vn', 'en') else 'vn',
             'vnp_ReturnUrl': settings.VNPAY_RETURN_URL,
             'vnp_IpAddr': _client_ip(request),
             'vnp_CreateDate': create_date,
