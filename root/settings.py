@@ -151,6 +151,10 @@ if ALLOWED_HOSTS_CONFIG:
 else:
     ALLOWED_HOSTS = []
 
+# Trust X-Forwarded-Proto từ nginx reverse proxy → request.build_absolute_uri() trả https://
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 CSRF_TRUSTED_ORIGINS = split_csv(env('CSRF_TRUSTED_ORIGINS'))
 if IS_LOCAL or DEBUG:
     CSRF_TRUSTED_ORIGINS.extend([
