@@ -37,6 +37,16 @@ class PhotoboothDevice(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # ── Printer status (pushed from Electron app) ──
+    printer_name = models.CharField(max_length=200, blank=True, default='')
+    printer_connected = models.BooleanField(default=False)
+    printer_ready = models.BooleanField(default=False)
+    printer_has_error = models.BooleanField(default=False)
+    printer_status = models.CharField(max_length=50, blank=True, default='')
+    printer_error_state = models.CharField(max_length=50, blank=True, default='')
+    printer_message = models.CharField(max_length=500, blank=True, default='')
+    printer_status_at = models.DateTimeField(null=True, blank=True)
+
     filters = models.ManyToManyField(
         'PhotoboothFilter',
         related_name='devices',
