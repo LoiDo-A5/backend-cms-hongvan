@@ -10,6 +10,8 @@ services:
         BUILD_ENV: prod
       target: container-prod
       network: host
+    env_file:
+      - .env.production
     environment:
       POETRY_VIRTUALENVS_CREATE: "false"
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
