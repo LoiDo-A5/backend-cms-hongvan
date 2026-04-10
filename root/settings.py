@@ -96,6 +96,10 @@ env = environ.Env(
     PAYOS_CHECKSUM_KEY=(str, ''),
     PAYOS_RETURN_URL=(str, ''),
     PAYOS_CANCEL_URL=(str, ''),
+    # PayPal — live REST API (https://developer.paypal.com)
+    PAYPAL_CLIENT_ID=(str, ''),
+    PAYPAL_SECRET_KEY=(str, ''),
+    PAYPAL_MODE=(str, 'live'),  # 'sandbox' or 'live'
     # Tên thiết bị hiển thị khi client không gửi `name` (POST /api/photobooth/devices/register/).
     PHOTOBOOTH_DEVICE_DEFAULT_NAME=(str, 'Photobooth'),
 )
@@ -417,6 +421,11 @@ PAYOS_API_KEY = env('PAYOS_API_KEY')
 PAYOS_CHECKSUM_KEY = env('PAYOS_CHECKSUM_KEY')
 PAYOS_RETURN_URL = env('PAYOS_RETURN_URL')
 PAYOS_CANCEL_URL = env('PAYOS_CANCEL_URL')
+
+# PayPal — live REST API credentials
+PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID')
+PAYPAL_SECRET_KEY = env('PAYPAL_SECRET_KEY')
+PAYPAL_MODE = env('PAYPAL_MODE')
 
 PHOTOBOOTH_DEVICE_DEFAULT_NAME = env('PHOTOBOOTH_DEVICE_DEFAULT_NAME')
 

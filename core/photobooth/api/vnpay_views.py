@@ -299,6 +299,10 @@ class PaymentStatusView(APIView):
         if st == PaymentOrder.Status.PENDING and order.payos_order_code:
             st = self._sync_payos_status(order, now) or st
 
+        # ── PayPal fallback: nếu PENDING + có paypal_order_id, hỏi PayPal API ──
+        if st == PaymentOrder.Status.PENDING and order.paypal_order_id:
+            st = self._sync_paypal_status(order) or st
+
         if st == PaymentOrder.Status.PENDING and now > order.expires_at:
             PaymentOrder.objects.filter(pk=order.pk, status=PaymentOrder.Status.PENDING).update(
                 status=PaymentOrder.Status.EXPIRED
@@ -375,4 +379,14 @@ class PaymentStatusView(APIView):
         except Exception as exc:
             logger.debug('payOS status check failed for order %s: %s', order.pk, exc)
 
+        return None
+
+    @staticmethod
+    def _sync_paypal_status(order):
+        """Delegate to paypal_views.sync_paypal_status."""
+        try:
+            from core.photobooth.api.paypal_views import sync_paypal_status
+            return sync_paypal_status(order)
+        except Exception as exc:
+            logger.debug('PayPal status check failed for order %s: %s', order.pk, exc)
         return None

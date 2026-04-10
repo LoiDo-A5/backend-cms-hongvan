@@ -48,4 +48,9 @@ class Migration(migrations.Migration):
             name='printer_status_at',
             field=models.DateTimeField(blank=True, null=True),
         ),
+        migrations.AddField(
+            model_name='paymentorder',
+            name='paypal_order_id',
+            field=models.CharField(blank=True, db_index=True, default='', max_length=64),
+        ),
     ]

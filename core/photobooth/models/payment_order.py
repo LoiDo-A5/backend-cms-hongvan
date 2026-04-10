@@ -41,6 +41,9 @@ class PaymentOrder(models.Model):
     payos_order_code = models.BigIntegerField(null=True, blank=True, db_index=True)
     payos_payment_link_id = models.CharField(max_length=64, blank=True, default='')
 
+    # PayPal
+    paypal_order_id = models.CharField(max_length=64, blank=True, default='', db_index=True)
+
     vnp_transaction_no = models.CharField(max_length=32, blank=True, default='')
     vnp_response_code = models.CharField(max_length=8, blank=True, default='')
     vnp_transaction_status = models.CharField(max_length=8, blank=True, default='')
