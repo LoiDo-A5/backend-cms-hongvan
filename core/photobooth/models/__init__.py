@@ -5,3 +5,4 @@ from .photobooth_background import PhotoboothBackground  # noqa: F401
 from .photobooth_device import PhotoboothDevice  # noqa: F401
 from .photobooth_decor_frame import PhotoboothDecorFrame  # noqa: F401
 from .photobooth_filter import PhotoboothFilter  # noqa: F401
+from .photobooth_sticker import PhotoboothSticker  # noqa: F401

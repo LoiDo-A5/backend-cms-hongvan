@@ -65,6 +65,12 @@ class PhotoboothDevice(models.Model):
         blank=True,
         verbose_name='Khung trang trí',
     )
+    stickers = models.ManyToManyField(
+        'PhotoboothSticker',
+        related_name='devices',
+        blank=True,
+        verbose_name='Stickers',
+    )
 
     class Meta:
         db_table = 'photobooth_device'
