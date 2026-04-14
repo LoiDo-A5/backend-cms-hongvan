@@ -112,21 +112,29 @@ class RemoveBackgroundView(APIView):
             bg_file = bg_obj.image.open('rb')
             bg_img = Image.open(bg_file).convert('RGBA')
 
-            # Cover-fit: scale background to cover foreground size, then center-crop
+            # Canvas = background full image (1000px wide, maintain background AR)
+            # → background không bị crop/zoom, show toàn bộ hình background
+            CANVAS_W = 1000
+            bg_orig_w, bg_orig_h = bg_img.size
+            canvas_h = round(bg_orig_h * CANVAS_W / bg_orig_w)
+            bg_img = bg_img.resize((CANVAS_W, canvas_h), Image.LANCZOS)
+
+            # Contain-fit foreground (người) trong canvas: giữ tỷ lệ người,
+            # scale để vừa khít canvas (không overflow), căn giữa
             fg_w, fg_h = fg_img.size
-            bg_w, bg_h = bg_img.size
-            scale = max(fg_w / bg_w, fg_h / bg_h)
-            new_w = round(bg_w * scale)
-            new_h = round(bg_h * scale)
-            bg_img = bg_img.resize((new_w, new_h), Image.LANCZOS)
-            # Center crop to exact foreground dimensions
-            left = (new_w - fg_w) // 2
-            top = (new_h - fg_h) // 2
-            bg_img = bg_img.crop((left, top, left + fg_w, top + fg_h))
+            fg_scale = min(CANVAS_W / fg_w, canvas_h / fg_h)
+            new_fg_w = round(fg_w * fg_scale)
+            new_fg_h = round(fg_h * fg_scale)
+            if new_fg_w != fg_w or new_fg_h != fg_h:
+                fg_img = fg_img.resize((new_fg_w, new_fg_h), Image.LANCZOS)
+
+            x_off = (CANVAS_W - new_fg_w) // 2
+            y_off = (canvas_h - new_fg_h) // 2
 
             # Composite: background + foreground (người đã xóa phông)
-            composite = Image.alpha_composite(bg_img, fg_img)
-            composite = composite.convert('RGB')
+            canvas_img = bg_img.copy()
+            canvas_img.alpha_composite(fg_img, dest=(x_off, y_off))
+            composite = canvas_img.convert('RGB')
         except Exception as exc:
             logger.exception('compositing failed')
             return Response(
