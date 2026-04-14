@@ -34,6 +34,7 @@ services:
       - "8002"
     networks:
       - default
+      - lan_access
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',8002)); s.close()\""]
       interval: 5s
@@ -74,6 +75,8 @@ services:
 
   redis:
     image: redis:7-alpine
+    networks:
+      - lan_access
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
