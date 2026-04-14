@@ -10,6 +10,7 @@ from core.photobooth.serializers.capture_options import (
     PhotoboothBackgroundOptionSerializer,
     PhotoboothDecorFrameOptionSerializer,
     PhotoboothFilterOptionSerializer,
+    PhotoboothStickerOptionSerializer,
 )
 
 
@@ -31,6 +32,7 @@ class CaptureOptionsView(APIView):
                     'filters': [],
                     'backgrounds': [],
                     'decor_frames': [],
+                    'stickers': [],
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -44,6 +46,7 @@ class CaptureOptionsView(APIView):
                     'filters': [],
                     'backgrounds': [],
                     'decor_frames': [],
+                    'stickers': [],
                 },
                 status=status.HTTP_200_OK,
             )
@@ -51,6 +54,7 @@ class CaptureOptionsView(APIView):
         filters_qs = device.filters.filter(is_active=True).order_by('sort_order', 'id')
         backgrounds_qs = device.backgrounds.filter(is_active=True).order_by('sort_order', 'id')
         decor_qs = device.decor_frames.filter(is_active=True).order_by('sort_order', 'id')
+        stickers_qs = device.stickers.filter(is_active=True).order_by('sort_order', 'id')
 
         ctx = {'request': request}
         return Response(
@@ -65,6 +69,9 @@ class CaptureOptionsView(APIView):
                 ).data,
                 'decor_frames': PhotoboothDecorFrameOptionSerializer(
                     decor_qs, many=True, context=ctx
+                ).data,
+                'stickers': PhotoboothStickerOptionSerializer(
+                    stickers_qs, many=True, context=ctx
                 ).data,
             },
             status=status.HTTP_200_OK,
