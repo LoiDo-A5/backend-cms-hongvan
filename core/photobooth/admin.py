@@ -287,18 +287,25 @@ class PhotoboothDeviceAdmin(admin.ModelAdmin):
             {'fields': ('filters', 'backgrounds', 'decor_frames', 'stickers')},
         ),
         ('Hệ thống', {'fields': ('last_seen_at', 'created_at', 'updated_at')}),
+        ('Đơn thanh toán', {'fields': ('payment_orders_link',)}),
     )
-    readonly_fields = ('last_seen_at', 'created_at', 'updated_at')
+    readonly_fields = ('last_seen_at', 'created_at', 'updated_at', 'payment_orders_link')
 
-    class PaymentOrderInline(admin.TabularInline):
-        model = PaymentOrder
-        fk_name = 'device'
-        extra = 0
-        fields = ('txn_ref', 'amount_vnd', 'status', 'capture_package', 'paid_at', 'created_at')
-        readonly_fields = ('txn_ref', 'amount_vnd', 'status', 'capture_package', 'paid_at', 'created_at')
-        show_change_link = True
+    @admin.display(description='Tổng đơn thanh toán')
+    def payment_orders_link(self, obj):
+        if not obj.pk:
+            return '-'
+        count = PaymentOrder.objects.filter(device=obj).count()
+        url = f'/admin/photobooth/paymentorder/?device__id__exact={obj.pk}'
+        return format_html(
+            '<a href="{}">{} đơn</a> (click để xem tất cả với pagination)',
+            url,
+            count,
+        )
 
-    inlines = [PaymentOrderInline]
+    # Bỏ inline PaymentOrder vì gây chậm khi có nhiều đơn
+    # Sử dụng link payment_orders_link thay thế
+    inlines = []
 
 
 @admin.register(PaymentOrder)
@@ -323,6 +330,7 @@ class PaymentOrderAdmin(admin.ModelAdmin):
     autocomplete_fields = ('capture_package', 'device')
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('-id',)
+    list_per_page = 25  # Pagination: 25 đơn mỗi trang
 
     class ImageInline(admin.TabularInline):
         model = ImagePhotobooth
