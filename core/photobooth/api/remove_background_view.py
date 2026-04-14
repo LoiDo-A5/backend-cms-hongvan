@@ -112,8 +112,17 @@ class RemoveBackgroundView(APIView):
             bg_file = bg_obj.image.open('rb')
             bg_img = Image.open(bg_file).convert('RGBA')
 
-            # Scale background để khớp kích thước ảnh chụp
-            bg_img = bg_img.resize(fg_img.size, Image.LANCZOS)
+            # Cover-fit: scale background to cover foreground size, then center-crop
+            fg_w, fg_h = fg_img.size
+            bg_w, bg_h = bg_img.size
+            scale = max(fg_w / bg_w, fg_h / bg_h)
+            new_w = round(bg_w * scale)
+            new_h = round(bg_h * scale)
+            bg_img = bg_img.resize((new_w, new_h), Image.LANCZOS)
+            # Center crop to exact foreground dimensions
+            left = (new_w - fg_w) // 2
+            top = (new_h - fg_h) // 2
+            bg_img = bg_img.crop((left, top, left + fg_w, top + fg_h))
 
             # Composite: background + foreground (người đã xóa phông)
             composite = Image.alpha_composite(bg_img, fg_img)
