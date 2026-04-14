@@ -30,7 +30,7 @@ class PhotoboothDecorFrameOptionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PhotoboothDecorFrame
-        fields = ('id', 'code', 'name', 'sort_order', 'image_url')
+        fields = ('id', 'code', 'name', 'sort_order', 'image_url', 'type')
 
     def get_image_url(self, obj):
         if not obj.image:

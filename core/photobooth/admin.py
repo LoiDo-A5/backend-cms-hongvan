@@ -137,17 +137,18 @@ class PhotoboothDecorFrameAdmin(admin.ModelAdmin):
         'image_thumb',
         'code',
         'name',
+        'type',
         'device_count',
         'sort_order',
         'is_active',
         'updated_at',
     )
-    list_filter = ('is_active',)
+    list_filter = ('is_active', 'type')
     search_fields = ('code', 'name')
     ordering = ('sort_order', 'id')
     readonly_fields = ('created_at', 'updated_at', 'image_thumb_large')
     fieldsets = (
-        (None, {'fields': ('code', 'name', 'is_active', 'sort_order')}),
+        (None, {'fields': ('code', 'name', 'type', 'is_active', 'sort_order')}),
         ('Ảnh preview', {'fields': ('image', 'image_thumb_large')}),
         ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
     )

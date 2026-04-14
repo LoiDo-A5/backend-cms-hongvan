@@ -6,6 +6,20 @@ class PhotoboothDecorFrame(models.Model):
     Khung trang trí (overlay) sau chụp; một thiết bị có nhiều khung qua PhotoboothDevice.decor_frames.
     """
 
+    LAYOUT_TYPE_CHOICES = [
+        ('grid4', '4 lần chụp (lưới)'),
+        ('strip4', '4 lần chụp (dọc)'),
+        ('grid6', '6 lần chụp'),
+    ]
+
+    type = models.CharField(
+        max_length=16,
+        choices=LAYOUT_TYPE_CHOICES,
+        blank=True,
+        null=True,
+        default=None,
+        help_text='Loại layout: grid4, strip4, grid6. Để trống = hiển thị cho tất cả.',
+    )
     code = models.SlugField(
         max_length=64,
         unique=True,
