@@ -4,6 +4,7 @@ from core.photobooth.api.capture_options_view import CaptureOptionsView
 from core.photobooth.api.capture_package_list_view import CapturePackageListView
 from core.photobooth.api.device_register_view import PhotoboothDeviceRegisterView
 from core.photobooth.api.order_gallery_view import OrderGalleryView
+from core.photobooth.api.printer_error_view import PrinterErrorView
 from core.photobooth.api.printer_status_view import PrinterStatusListView, PrinterStatusUpdateView
 from core.photobooth.api.remove_background_view import RemoveBackgroundView
 from core.photobooth.api.save_images_view import SaveImagesView
@@ -13,6 +14,7 @@ urlpatterns = [
     path('devices/register/', PhotoboothDeviceRegisterView.as_view(), name='photobooth-device-register'),
     path('devices/printer-status/', PrinterStatusUpdateView.as_view(), name='photobooth-printer-status-update'),
     path('devices/printer-status/list/', PrinterStatusListView.as_view(), name='photobooth-printer-status-list'),
+    path('printer-error/', PrinterErrorView.as_view(), name='photobooth-printer-error'),
     path('capture-options/', CaptureOptionsView.as_view(), name='photobooth-capture-options'),
     path('remove-background/', RemoveBackgroundView.as_view(), name='photobooth-remove-background'),
     path('save-images/', SaveImagesView.as_view(), name='photobooth-save-images'),
