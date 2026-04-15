@@ -90,22 +90,22 @@ class RemoveBackgroundView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # --- Xóa phông nền (ưu tiên: Photoroom → remove.bg → rembg local) ------
+        # --- Xóa phông nền (ưu tiên: remove.bg → Photoroom → rembg local) ------
         fg_img = None
         engine_used = None
         input_bytes = self._pil_to_bytes(subject_img, fmt='PNG')
 
-        # 1) Photoroom API (trả phí, $0.02/ảnh Basic, chất lượng cao)
+        # 1) remove.bg API (trả phí, chuyên portrait, chất lượng cao nhất)
+        removebg_key = getattr(settings, 'REMOVEBG_API_KEY', '')
+        if removebg_key and fg_img is None:
+            fg_img, engine_used = self._remove_bg_api(input_bytes, removebg_key)
+
+        # 2) Photoroom API (trả phí, $0.02/ảnh Basic, chất lượng cao)
         photoroom_key = getattr(settings, 'PHOTOROOM_API_KEY', '')
         if photoroom_key and fg_img is None:
             fg_img, engine_used = self._remove_bg_photoroom(
                 input_bytes, photoroom_key,
             )
-
-        # 2) remove.bg API (trả phí, chuyên portrait, chất lượng cao nhất)
-        removebg_key = getattr(settings, 'REMOVEBG_API_KEY', '')
-        if removebg_key and fg_img is None:
-            fg_img, engine_used = self._remove_bg_api(input_bytes, removebg_key)
 
         # 3) Fallback: rembg local (miễn phí)
         if fg_img is None:
