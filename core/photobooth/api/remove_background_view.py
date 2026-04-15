@@ -121,7 +121,7 @@ class RemoveBackgroundView(APIView):
             bg_img = bg_img.resize((CANVAS_W, canvas_h), Image.LANCZOS)
 
             # Contain-fit foreground (người) trong canvas: giữ tỷ lệ người,
-            # scale để vừa khít canvas (không overflow), căn giữa
+            # scale để vừa khít canvas (không overflow), căn giữa ngang + đáy dưới
             fg_w, fg_h = fg_img.size
             fg_scale = min(CANVAS_W / fg_w, canvas_h / fg_h)
             new_fg_w = round(fg_w * fg_scale)
@@ -130,7 +130,8 @@ class RemoveBackgroundView(APIView):
                 fg_img = fg_img.resize((new_fg_w, new_fg_h), Image.LANCZOS)
 
             x_off = (CANVAS_W - new_fg_w) // 2
-            y_off = (canvas_h - new_fg_h) // 2
+            # Bottom-align: người đứng sát đáy canvas, không bị cắt thân dưới
+            y_off = canvas_h - new_fg_h
 
             # Composite: background + foreground (người đã xóa phông)
             canvas_img = bg_img.copy()
