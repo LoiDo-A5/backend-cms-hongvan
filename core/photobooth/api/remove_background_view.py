@@ -90,19 +90,24 @@ class RemoveBackgroundView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # --- Xóa phông nền (ưu tiên remove.bg API, fallback rembg) -------------
+        # --- Xóa phông nền (ưu tiên: Photoroom → remove.bg → rembg local) ------
         fg_img = None
         engine_used = None
+        input_bytes = self._pil_to_bytes(subject_img, fmt='PNG')
 
-        # 1) remove.bg API (trả phí, chất lượng tốt nhất)
-        removebg_key = getattr(settings, 'REMOVEBG_API_KEY', '')
-        if removebg_key:
-            fg_img, engine_used = self._remove_bg_api(
-                self._pil_to_bytes(subject_img, fmt='PNG'),
-                removebg_key,
+        # 1) Photoroom API (trả phí, $0.02/ảnh Basic, chất lượng cao)
+        photoroom_key = getattr(settings, 'PHOTOROOM_API_KEY', '')
+        if photoroom_key and fg_img is None:
+            fg_img, engine_used = self._remove_bg_photoroom(
+                input_bytes, photoroom_key,
             )
 
-        # 2) Fallback: rembg local (miễn phí)
+        # 2) remove.bg API (trả phí, chuyên portrait, chất lượng cao nhất)
+        removebg_key = getattr(settings, 'REMOVEBG_API_KEY', '')
+        if removebg_key and fg_img is None:
+            fg_img, engine_used = self._remove_bg_api(input_bytes, removebg_key)
+
+        # 3) Fallback: rembg local (miễn phí)
         if fg_img is None:
             fg_img, engine_used, error_resp = self._remove_bg_rembg(subject_img)
             if error_resp is not None:
@@ -186,6 +191,35 @@ class RemoveBackgroundView(APIView):
                 return None, None
         except Exception as exc:
             logger.warning('[REMOVE-BG] remove.bg API error: %s', exc)
+            return None, None
+
+    @staticmethod
+    def _remove_bg_photoroom(image_bytes: bytes, api_key: str):
+        """
+        Photoroom Remove Background API — $0.02/ảnh (Basic plan).
+        Endpoint: POST https://sdk.photoroom.com/v1/segment
+        Returns (fg_img, 'photoroom') hoặc (None, None) nếu fail.
+        """
+        try:
+            resp = http_requests.post(
+                'https://sdk.photoroom.com/v1/segment',
+                files={'image_file': ('photo.png', image_bytes, 'image/png')},
+                headers={'x-api-key': api_key},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                fg_img = Image.open(io.BytesIO(resp.content)).convert('RGBA')
+                logger.info('[REMOVE-BG] Photoroom API success')
+                return fg_img, 'photoroom'
+            else:
+                logger.warning(
+                    '[REMOVE-BG] Photoroom API failed: %s - %s',
+                    resp.status_code,
+                    resp.text[:200],
+                )
+                return None, None
+        except Exception as exc:
+            logger.warning('[REMOVE-BG] Photoroom API error: %s', exc)
             return None, None
 
     def _remove_bg_rembg(self, subject_img: Image.Image):

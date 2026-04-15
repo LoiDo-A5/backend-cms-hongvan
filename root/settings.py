@@ -632,7 +632,8 @@ PUSHER_APP_CLUSTER = env('PUSHER_APP_CLUSTER')
 DISCORD_WEBHOOK_URL = env('DISCORD_WEBHOOK_URL', default='')
 DISCORD_MENTION_ROLE = env('DISCORD_MENTION_ROLE', default='')
 
-# REMOVE.BG - AI xóa phông nền (trả phí, chất lượng cao)
+# AI XÓA PHÔNG NỀN (Photoroom → remove.bg → rembg local)
+PHOTOROOM_API_KEY = env('PHOTOROOM_API_KEY', default='')
 REMOVEBG_API_KEY = env('REMOVEBG_API_KEY', default='')
 
 # ONE SIGNAL
