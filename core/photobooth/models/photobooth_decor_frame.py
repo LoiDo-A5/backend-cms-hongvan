@@ -10,6 +10,8 @@ class PhotoboothDecorFrame(models.Model):
         ('grid4', '4 lần chụp (lưới)'),
         ('strip4', '4 lần chụp (dọc)'),
         ('grid6', '6 lần chụp'),
+        ('singleLarge', '1 lần chụp - Ảnh lớn'),
+        ('idphoto', '1 lần chụp - Ảnh thẻ 4×6'),
     ]
 
     type = models.CharField(
@@ -18,7 +20,7 @@ class PhotoboothDecorFrame(models.Model):
         blank=True,
         null=True,
         default=None,
-        help_text='Loại layout: grid4, strip4, grid6. Để trống = hiển thị cho tất cả.',
+        help_text='Loại layout: grid4, strip4, grid6, singleLarge, idphoto. Để trống = hiển thị cho tất cả.',
     )
     code = models.SlugField(
         max_length=64,
