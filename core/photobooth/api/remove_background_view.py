@@ -4,7 +4,10 @@ import base64
 import io
 import logging
 
-from PIL import Image
+import numpy as np
+import requests as http_requests
+from PIL import Image, ImageFilter
+from django.conf import settings
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -87,25 +90,23 @@ class RemoveBackgroundView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # --- Xóa phông nền bằng rembg (AI) ------------------------------------
-        try:
-            from rembg import remove as rembg_remove
+        # --- Xóa phông nền (ưu tiên remove.bg API, fallback rembg) -------------
+        fg_img = None
+        engine_used = None
 
-            input_bytes = self._pil_to_bytes(subject_img, fmt='PNG')
-            output_bytes = rembg_remove(input_bytes)
-            fg_img = Image.open(io.BytesIO(output_bytes)).convert('RGBA')
-        except ImportError:
-            logger.error('rembg is not installed; run poetry install / pip install rembg[cpu]')
-            return Response(
-                {'detail': 'Server missing rembg (AI background removal).'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        # 1) remove.bg API (trả phí, chất lượng tốt nhất)
+        removebg_key = getattr(settings, 'REMOVEBG_API_KEY', '')
+        if removebg_key:
+            fg_img, engine_used = self._remove_bg_api(
+                self._pil_to_bytes(subject_img, fmt='PNG'),
+                removebg_key,
             )
-        except Exception as exc:
-            logger.exception('rembg processing failed')
-            return Response(
-                {'detail': f'Background removal failed: {exc}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+
+        # 2) Fallback: rembg local (miễn phí)
+        if fg_img is None:
+            fg_img, engine_used, error_resp = self._remove_bg_rembg(subject_img)
+            if error_resp is not None:
+                return error_resp
 
         # --- Ghép nền mới -----------------------------------------------------
         try:
@@ -150,11 +151,111 @@ class RemoveBackgroundView(APIView):
         return Response(
             {
                 'result_image': f'data:image/jpeg;base64,{result_b64}',
+                'engine': engine_used,
             },
             status=status.HTTP_200_OK,
         )
 
     # ---------- Helpers --------------------------------------------------------
+
+    @staticmethod
+    def _remove_bg_api(image_bytes: bytes, api_key: str):
+        """
+        remove.bg API — trả phí, chất lượng cao nhất.
+        Returns (fg_img, 'remove.bg') hoặc (None, None) nếu fail.
+        """
+        try:
+            resp = http_requests.post(
+                'https://api.remove.bg/v1.0/removebg',
+                files={'image_file': ('photo.png', image_bytes, 'image/png')},
+                data={'size': 'auto', 'type': 'person'},
+                headers={'X-Api-Key': api_key},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                fg_img = Image.open(io.BytesIO(resp.content)).convert('RGBA')
+                logger.info('[REMOVE-BG] remove.bg API success')
+                return fg_img, 'remove.bg'
+            else:
+                logger.warning(
+                    '[REMOVE-BG] remove.bg API failed: %s - %s',
+                    resp.status_code,
+                    resp.text[:200],
+                )
+                return None, None
+        except Exception as exc:
+            logger.warning('[REMOVE-BG] remove.bg API error: %s', exc)
+            return None, None
+
+    def _remove_bg_rembg(self, subject_img: Image.Image):
+        """
+        rembg local — miễn phí, fallback.
+        Returns (fg_img, 'rembg', None) hoặc (None, None, Response) nếu lỗi.
+        """
+        try:
+            from rembg import remove as rembg_remove, new_session
+
+            session = new_session('isnet-general-use')
+            input_bytes = self._pil_to_bytes(subject_img, fmt='PNG')
+            output_bytes = rembg_remove(
+                input_bytes,
+                session=session,
+                alpha_matting=True,
+                alpha_matting_foreground_threshold=220,
+                alpha_matting_background_threshold=20,
+                alpha_matting_erode_size=4,
+            )
+            fg_img = Image.open(io.BytesIO(output_bytes)).convert('RGBA')
+            fg_img = self._clean_alpha(fg_img)
+            logger.info('[REMOVE-BG] rembg (isnet-general-use) success')
+            return fg_img, 'rembg', None
+        except ImportError:
+            logger.error('rembg is not installed; run pip install rembg[cpu]')
+            return None, None, Response(
+                {'detail': 'Server missing rembg (AI background removal).'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as exc:
+            logger.exception('rembg processing failed')
+            return None, None, Response(
+                {'detail': f'Background removal failed: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @staticmethod
+    def _clean_alpha(img: Image.Image) -> Image.Image:
+        """
+        Dọn sạch alpha channel sau rembg:
+        1. Loại bỏ ghost pixel (alpha < 30) → 100% trong suốt
+        2. Pixel gần đặc (alpha > 225) → 100% đặc
+        3. Smooth viền chuyển tiếp nhẹ để tránh răng cưa
+        → Đảm bảo nền bị xóa sạch, người giữ nguyên chi tiết.
+        """
+        arr = np.array(img)
+        alpha = arr[:, :, 3].copy()
+
+        # Bước 1: xóa sạch ghost pixel — nền dính mờ
+        alpha[alpha < 30] = 0
+
+        # Bước 2: pixel gần đặc → đặc hoàn toàn — bảo vệ người
+        alpha[alpha > 225] = 255
+
+        arr[:, :, 3] = alpha
+        cleaned = Image.fromarray(arr, 'RGBA')
+
+        # Bước 3: smooth viền nhẹ (1px) để giảm răng cưa, không ảnh hưởng chi tiết
+        smooth_alpha = cleaned.split()[3].filter(ImageFilter.SMOOTH)
+        # Chỉ apply smooth cho vùng viền (alpha 30-225), giữ nguyên đặc/trong suốt
+        orig_alpha = cleaned.split()[3]
+        mask_arr = np.array(orig_alpha)
+        smooth_arr = np.array(smooth_alpha)
+        # Chỉ thay đổi pixel ở vùng viền chuyển tiếp
+        edge_mask = (mask_arr > 0) & (mask_arr < 255)
+        final_alpha = mask_arr.copy()
+        final_alpha[edge_mask] = smooth_arr[edge_mask]
+        cleaned.putalpha(Image.fromarray(final_alpha))
+
+        return cleaned
 
     @staticmethod
     def _decode_base64_image(raw: str) -> bytes:
