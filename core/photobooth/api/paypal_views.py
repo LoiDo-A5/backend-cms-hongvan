@@ -143,6 +143,7 @@ class PaypalCreatePaymentView(APIView):
             booth_id=booth_id,
             expires_at=expires_at,
             status=PaymentOrder.Status.PENDING,
+            payment_method=PaymentOrder.PaymentMethod.PAYPAL,
         )
         order.txn_ref = str(order.pk)
         order.save(update_fields=['txn_ref', 'updated_at'])

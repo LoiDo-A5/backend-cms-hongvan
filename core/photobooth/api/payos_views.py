@@ -129,6 +129,7 @@ class PayosCreatePaymentView(APIView):
             booth_id=booth_id,
             expires_at=expires_at_utc,
             status=PaymentOrder.Status.PENDING,
+            payment_method=PaymentOrder.PaymentMethod.VIETQR,
         )
         order.txn_ref = str(order.pk)
         try:

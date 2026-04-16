@@ -12,6 +12,11 @@ class PaymentOrder(models.Model):
         FAILED = 'failed', 'Thất bại'
         EXPIRED = 'expired', 'Hết hạn'
 
+    class PaymentMethod(models.TextChoices):
+        VIETQR = 'vietqr', 'VietQR (payOS)'
+        VNPAY = 'vnpay', 'VNPAY'
+        PAYPAL = 'paypal', 'PayPal'
+
     txn_ref = models.CharField(max_length=100, unique=True, db_index=True)
     amount_vnd = models.PositiveIntegerField()
     capture_package = models.ForeignKey(
@@ -37,6 +42,14 @@ class PaymentOrder(models.Model):
         db_index=True,
     )
     booth_id = models.CharField(max_length=64, blank=True, default='')
+
+    payment_method = models.CharField(
+        max_length=16,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.VIETQR,
+        verbose_name='Phương thức thanh toán',
+        db_index=True,
+    )
 
     payos_order_code = models.BigIntegerField(null=True, blank=True, db_index=True)
     payos_payment_link_id = models.CharField(max_length=64, blank=True, default='')

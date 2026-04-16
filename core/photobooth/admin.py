@@ -315,6 +315,7 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         'txn_ref',
         'amount_vnd',
         'status',
+        'payment_method',
         'capture_package',
         'device',
         'booth_id',
@@ -325,7 +326,7 @@ class PaymentOrderAdmin(admin.ModelAdmin):
         'paid_at',
         'created_at',
     )
-    list_filter = ('status', 'capture_package', 'device')
+    list_filter = ('status', 'payment_method', 'capture_package', 'device')
     search_fields = ('txn_ref', 'booth_id', 'payos_payment_link_id', 'payos_order_code', 'device__device_id', 'device__name')
     autocomplete_fields = ('capture_package', 'device')
     readonly_fields = ('created_at', 'updated_at')
@@ -365,6 +366,7 @@ class PaymentOrderAdmin(admin.ModelAdmin):
                     'txn_ref',
                     'amount_vnd',
                     'status',
+                    'payment_method',
                     'payos_order_code',
                     'payos_payment_link_id',
                     'expires_at',
