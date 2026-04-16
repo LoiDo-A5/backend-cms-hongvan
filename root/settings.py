@@ -628,10 +628,6 @@ PUSHER_APP_KEY = env('PUSHER_APP_KEY')
 PUSHER_APP_SECRET = env('PUSHER_APP_SECRET')
 PUSHER_APP_CLUSTER = env('PUSHER_APP_CLUSTER')
 
-# DISCORD - Thông báo lỗi máy in
-DISCORD_WEBHOOK_URL = env('DISCORD_WEBHOOK_URL', default='')
-DISCORD_MENTION_ROLE = env('DISCORD_MENTION_ROLE', default='')
-
 # AI XÓA PHÔNG NỀN (remove.bg → Photoroom → rembg local)
 REMOVEBG_API_KEY = env('REMOVEBG_API_KEY', default='')
 PHOTOROOM_API_KEY = env('PHOTOROOM_API_KEY', default='')

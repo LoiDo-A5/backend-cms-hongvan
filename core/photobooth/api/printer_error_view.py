@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -54,21 +53,6 @@ class PrinterErrorView(APIView):
         except Exception as e:
             logger.warning(f"[PRINTER-ERROR] Could not get device location: {e}")
 
-        # Queue Discord notification
-        queued = False
-        if getattr(settings, 'DISCORD_WEBHOOK_URL', ''):
-            try:
-                from common.tasks.discord import send_discord_printer_alert
-                send_discord_printer_alert.delay(
-                    device_id=device_id,
-                    error_type=error_type,
-                    printer_name=printer_name,
-                    message=message or f"Lỗi máy in: {error_type}",
-                    location=location,
-                )
-                queued = True
-                logger.info(f"[PRINTER-ERROR] Queued Discord alert for {device_id}: {error_type}")
-            except Exception as e:
-                logger.error(f"[PRINTER-ERROR] Failed to queue Discord alert: {e}")
+        logger.info(f"[PRINTER-ERROR] {device_id}: {error_type} - {printer_name} - {message}")
 
-        return Response({'status': 'ok', 'queued': queued})
+        return Response({'status': 'ok'})
