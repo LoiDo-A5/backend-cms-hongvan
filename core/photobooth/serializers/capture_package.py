@@ -38,3 +38,26 @@ class CapturePackageSerializer(serializers.ModelSerializer):
         if obj.description_line_2_en:
             lines.append(obj.description_line_2_en)
         return lines
+
+
+class CapturePackageWriteSerializer(serializers.ModelSerializer):
+    """CMS write serializer — tạo/sửa gói chụp."""
+
+    class Meta:
+        model = CapturePackage
+        fields = (
+            'id',
+            'code',
+            'name',
+            'name_en',
+            'amount_vnd',
+            'print_count',
+            'include_online_file',
+            'description_line_1',
+            'description_line_1_en',
+            'description_line_2',
+            'description_line_2_en',
+            'sort_order',
+            'is_active',
+        )
+        read_only_fields = ('id',)
