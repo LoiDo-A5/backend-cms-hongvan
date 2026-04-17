@@ -3,6 +3,7 @@ from django.urls import path
 from core.photobooth.api.background_crud_view import BackgroundCrudView, BackgroundDetailCrudView
 from core.photobooth.api.capture_options_view import CaptureOptionsView
 from core.photobooth.api.capture_package_crud_view import CapturePackageCrudView, CapturePackageDetailCrudView
+from core.photobooth.api.cms_photos_view import CmsPhotosView
 from core.photobooth.api.dashboard_view import DashboardView
 from core.photobooth.api.capture_package_list_view import CapturePackageListView
 from core.photobooth.api.decor_frame_crud_view import DecorFrameCrudView, DecorFrameDetailCrudView
@@ -30,6 +31,7 @@ urlpatterns = [
     path('cms/decor-frames/', DecorFrameCrudView.as_view(), name='photobooth-cms-decor-frames'),
     path('cms/decor-frames/<int:pk>/', DecorFrameDetailCrudView.as_view(), name='photobooth-cms-decor-frame-detail'),
     path('cms/orders/', OrderListView.as_view(), name='photobooth-cms-orders'),
+    path('cms/photos/', CmsPhotosView.as_view(), name='photobooth-cms-photos'),
     path('devices/register/', PhotoboothDeviceRegisterView.as_view(), name='photobooth-device-register'),
     path('devices/printer-status/', PrinterStatusUpdateView.as_view(), name='photobooth-printer-status-update'),
     path('devices/printer-status/list/', PrinterStatusListView.as_view(), name='photobooth-printer-status-list'),

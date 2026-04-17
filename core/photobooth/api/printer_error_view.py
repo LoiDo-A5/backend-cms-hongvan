@@ -6,6 +6,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.utils.matrix_notify import notify_printer_error
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,20 +41,29 @@ class PrinterErrorView(APIView):
             )
 
         # Validate error_type
-        valid_types = ['paper_jam', 'no_paper', 'disconnected', 'hardware_error', 'print_failed']
+        valid_types = ['paper_jam', 'no_paper', 'low_paper', 'no_ink', 'low_ink',
+                       'disconnected', 'offline', 'hardware_error', 'print_failed', 'cover_open']
         if error_type not in valid_types:
             error_type = 'print_failed'
 
-        # Get device location if available
-        location = None
+        # Get device name
+        device_name = device_id
         try:
             from core.photobooth.models import PhotoboothDevice
             device = PhotoboothDevice.objects.filter(device_id=device_id).first()
-            if device and device.location:
-                location = device.location.name if hasattr(device.location, 'name') else str(device.location)
+            if device:
+                device_name = device.name or device_id
         except Exception as e:
-            logger.warning(f"[PRINTER-ERROR] Could not get device location: {e}")
+            logger.warning(f"[PRINTER-ERROR] Could not get device: {e}")
 
-        logger.info(f"[PRINTER-ERROR] {device_id}: {error_type} - {printer_name} - {message}")
+        logger.info(f"[PRINTER-ERROR] {device_name}: {error_type} - {printer_name} - {message}")
+
+        # Push Matrix notification
+        notify_printer_error(
+            device_name=device_name,
+            error_key=error_type,
+            detail=message,
+            printer_name=printer_name,
+        )
 
         return Response({'status': 'ok'})

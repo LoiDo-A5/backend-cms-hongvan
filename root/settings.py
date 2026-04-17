@@ -102,6 +102,10 @@ env = environ.Env(
     PAYPAL_MODE=(str, 'live'),  # 'sandbox' or 'live'
     # Tên thiết bị hiển thị khi client không gửi `name` (POST /api/photobooth/devices/register/).
     PHOTOBOOTH_DEVICE_DEFAULT_NAME=(str, 'Photobooth'),
+    # Matrix / Element — push notification máy in
+    MATRIX_HOMESERVER=(str, ''),
+    MATRIX_BOT_TOKEN=(str, ''),
+    MATRIX_ROOM_ID=(str, ''),
 )
 
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')
@@ -428,6 +432,11 @@ PAYPAL_SECRET_KEY = env('PAYPAL_SECRET_KEY')
 PAYPAL_MODE = env('PAYPAL_MODE')
 
 PHOTOBOOTH_DEVICE_DEFAULT_NAME = env('PHOTOBOOTH_DEVICE_DEFAULT_NAME')
+
+# Matrix / Element — push notification khi máy in gặp lỗi
+MATRIX_HOMESERVER = env('MATRIX_HOMESERVER')
+MATRIX_BOT_TOKEN = env('MATRIX_BOT_TOKEN')
+MATRIX_ROOM_ID = env('MATRIX_ROOM_ID')
 
 # http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html
 # https://docs.celeryq.dev/en/3.1/configuration.html

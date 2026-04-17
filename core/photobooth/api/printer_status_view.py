@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.photobooth.models import PhotoboothDevice
+from common.utils.matrix_notify import notify_printer_error
 
 
 class PrinterStatusUpdateView(APIView):
@@ -61,6 +62,42 @@ class PrinterStatusUpdateView(APIView):
             'printer_has_error', 'printer_status', 'printer_error_state',
             'printer_message', 'current_screen', 'printer_status_at', 'last_seen_at', 'updated_at',
         ])
+
+        # ── Matrix notification ──────────────────────────────────────────────
+        printer_name = dev.printer_name or 'Unknown'
+        error_state = (request.data.get('error_state') or '').lower()
+        has_error = bool(request.data.get('has_error', False))
+        connected = bool(request.data.get('connected', False))
+        msg = (request.data.get('message') or '').strip()
+
+        if not connected:
+            notify_printer_error(
+                device_name=dev.name,
+                error_key='disconnected',
+                detail=msg or 'Máy in không kết nối.',
+                printer_name=printer_name,
+            )
+        elif has_error:
+            # Map error_state string → error_key
+            error_key = 'hardware_error'
+            if 'paper' in error_state and 'jam' in error_state:
+                error_key = 'paper_jam'
+            elif 'nopaper' in error_state or 'no_paper' in error_state or 'paper' in error_state:
+                error_key = 'no_paper'
+            elif 'ink' in error_state or 'ribbon' in error_state:
+                error_key = 'no_ink'
+            elif 'cover' in error_state or 'door' in error_state:
+                error_key = 'cover_open'
+            elif 'offline' in error_state:
+                error_key = 'offline'
+
+            notify_printer_error(
+                device_name=dev.name,
+                error_key=error_key,
+                detail=msg or error_state,
+                printer_name=printer_name,
+            )
+        # ────────────────────────────────────────────────────────────────────
 
         return Response({'ok': True})
 
