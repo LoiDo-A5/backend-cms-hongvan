@@ -53,12 +53,13 @@ class PrinterStatusUpdateView(APIView):
         dev.printer_status = (request.data.get('status') or '')[:50]
         dev.printer_error_state = (request.data.get('error_state') or '')[:50]
         dev.printer_message = (request.data.get('message') or '')[:500]
+        dev.current_screen = (request.data.get('current_screen') or '')[:50]
         dev.printer_status_at = now
         dev.last_seen_at = now
         dev.save(update_fields=[
             'printer_name', 'printer_connected', 'printer_ready',
             'printer_has_error', 'printer_status', 'printer_error_state',
-            'printer_message', 'printer_status_at', 'last_seen_at', 'updated_at',
+            'printer_message', 'current_screen', 'printer_status_at', 'last_seen_at', 'updated_at',
         ])
 
         return Response({'ok': True})
@@ -90,5 +91,6 @@ class PrinterStatusListView(APIView):
                 'message': dev.printer_message,
                 'printer_status_at': dev.printer_status_at.isoformat() if dev.printer_status_at else None,
                 'last_seen_at': dev.last_seen_at.isoformat() if dev.last_seen_at else None,
+                'current_screen': dev.current_screen,
             })
         return Response(data)

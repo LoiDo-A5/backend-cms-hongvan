@@ -47,6 +47,12 @@ class PhotoboothDevice(models.Model):
     printer_message = models.CharField(max_length=500, blank=True, default='')
     printer_status_at = models.DateTimeField(null=True, blank=True)
 
+    # ── Current screen (pushed from Electron app) ──
+    current_screen = models.CharField(
+        max_length=50, blank=True, default='',
+        help_text='Màn hình hiện tại trên app Electron (welcome, package, payment, capture, printing, …).',
+    )
+
     filters = models.ManyToManyField(
         'PhotoboothFilter',
         related_name='devices',
