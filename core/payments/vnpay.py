@@ -1,7 +1,5 @@
 """
 Ký và kiểm tra HMAC SHA512 theo hướng dẫn VNPAY PAY (v2.1.0).
-Chuỗi ký: các cặp key=value sắp xếp theo tên tham số tăng dần, nối bằng &,
-bỏ qua tham số rỗng và vnp_SecureHash / vnp_SecureHashType.
 """
 from __future__ import annotations
 
@@ -48,7 +46,6 @@ def verify_callback_secure_hash(
 
 
 def build_payment_url(base_url: str, params: dict[str, Any]) -> str:
-    """Query string được urlencode; thứ tự key theo alphabet (ổn định)."""
     ordered = sorted(params.items(), key=lambda x: x[0])
     qs = urlencode(ordered, quote_via=quote_plus)
     sep = '&' if '?' in base_url else '?'
@@ -56,7 +53,6 @@ def build_payment_url(base_url: str, params: dict[str, Any]) -> str:
 
 
 def normalize_order_info_ascii(text: str, max_len: int = 255) -> str:
-    """VNPAY: không dấu, hạn chế ký tự đặc biệt — đơn giản hóa cho booth."""
     import unicodedata
 
     s = unicodedata.normalize('NFKD', text)
@@ -64,4 +60,4 @@ def normalize_order_info_ascii(text: str, max_len: int = 255) -> str:
     out = out.replace('\n', ' ').strip()
     if len(out) > max_len:
         out = out[: max_len - 3] + '...'
-    return out or 'Photobooth payment'
+    return out or 'Payment'

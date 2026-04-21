@@ -84,28 +84,6 @@ env = environ.Env(
     # SENDBIRD_API_URL=(str, 'https://api-8343C0C0-0E9B-4428-8C96-6C9295E527F8.sendbird.com/v3'),
     # API_TOKEN_SENDBIRD=(str, '10b508f079bdb22a6a5e7da2eb18e3badedfaedb'),
 
-    VNPAY_TMN_CODE=(str, ''),
-    VNPAY_HASH_SECRET=(str, ''),
-    VNPAY_PAYMENT_URL=(str, 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html'),
-    VNPAY_RETURN_URL=(str, ''),
-    # Để trống = khách chọn cổng trên trang VNPAY. VNPAYQR chỉ bật khi merchant sandbox đã bật kênh QR; nếu không dễ gặp code 70 (sai chữ ký) tùy cấu hình cổng.
-    VNPAY_DEFAULT_BANK_CODE=(str, ''),
-    # payOS — payment gateway thay thế VNPAY (https://payos.vn)
-    PAYOS_CLIENT_ID=(str, ''),
-    PAYOS_API_KEY=(str, ''),
-    PAYOS_CHECKSUM_KEY=(str, ''),
-    PAYOS_RETURN_URL=(str, ''),
-    PAYOS_CANCEL_URL=(str, ''),
-    # PayPal — live REST API (https://developer.paypal.com)
-    PAYPAL_CLIENT_ID=(str, ''),
-    PAYPAL_SECRET_KEY=(str, ''),
-    PAYPAL_MODE=(str, 'live'),  # 'sandbox' or 'live'
-    # Tên thiết bị hiển thị khi client không gửi `name` (POST /api/photobooth/devices/register/).
-    PHOTOBOOTH_DEVICE_DEFAULT_NAME=(str, 'Photobooth'),
-    # Matrix / Element — push notification máy in
-    MATRIX_HOMESERVER=(str, ''),
-    MATRIX_BOT_TOKEN=(str, ''),
-    MATRIX_ROOM_ID=(str, ''),
 )
 
 IS_TEST = 'test' in sys.argv or 'pytest' in sys.argv[0] or os.getenv('IS_TEST')
@@ -213,7 +191,7 @@ INSTALLED_APPS = [
     'core.accounts.custom_providers.custom_google',
 
     'common',
-    'core.photobooth',
+    'core.payments',
 ]
 
 MIDDLEWARE = [
@@ -412,31 +390,24 @@ ALLOW_HEADERS_LIST = env('ALLOW_HEADERS_LIST')
 if ALLOW_HEADERS_LIST:
     CORS_ALLOW_HEADERS += ALLOW_HEADERS_LIST.split(',')
 
-# VNPAY PAY — điền VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_RETURN_URL trong .env.local (không commit secret).
+# VNPAY
 VNPAY_TMN_CODE = env('VNPAY_TMN_CODE')
 VNPAY_HASH_SECRET = env('VNPAY_HASH_SECRET')
 VNPAY_PAYMENT_URL = env('VNPAY_PAYMENT_URL')
 VNPAY_RETURN_URL = env('VNPAY_RETURN_URL')
 VNPAY_DEFAULT_BANK_CODE = env('VNPAY_DEFAULT_BANK_CODE')
 
-# payOS — payment gateway (https://payos.vn)
+# payOS
 PAYOS_CLIENT_ID = env('PAYOS_CLIENT_ID')
 PAYOS_API_KEY = env('PAYOS_API_KEY')
 PAYOS_CHECKSUM_KEY = env('PAYOS_CHECKSUM_KEY')
 PAYOS_RETURN_URL = env('PAYOS_RETURN_URL')
 PAYOS_CANCEL_URL = env('PAYOS_CANCEL_URL')
 
-# PayPal — live REST API credentials
+# PayPal
 PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID')
 PAYPAL_SECRET_KEY = env('PAYPAL_SECRET_KEY')
 PAYPAL_MODE = env('PAYPAL_MODE')
-
-PHOTOBOOTH_DEVICE_DEFAULT_NAME = env('PHOTOBOOTH_DEVICE_DEFAULT_NAME')
-
-# Matrix / Element — push notification khi máy in gặp lỗi
-MATRIX_HOMESERVER = env('MATRIX_HOMESERVER')
-MATRIX_BOT_TOKEN = env('MATRIX_BOT_TOKEN')
-MATRIX_ROOM_ID = env('MATRIX_ROOM_ID')
 
 # http://docs.celeryproject.org/en/latest/django/first-steps-with-django.html
 # https://docs.celeryq.dev/en/3.1/configuration.html

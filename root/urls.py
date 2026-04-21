@@ -16,9 +16,9 @@ from core.accounts.views.login_view import LoginView
 from django.conf.urls.static import static
 
 # Keep admin branding stable regardless of app auto-discovery import order.
-admin.site.site_header = 'PhotoBooth Admin'
-admin.site.site_title = 'PhotoBooth Admin'
-admin.site.index_title = 'PhotoBooth Admin'
+admin.site.site_header = 'Admin'
+admin.site.site_title = 'Admin'
+admin.site.index_title = 'Admin'
 
 urlpatterns = [
     path('healthcheck/', HealthCheckView.as_view(), name='healthcheck'),
@@ -28,8 +28,7 @@ urlpatterns = [
     path('api/', include(tf_urls)),
 
     path('api/common/', include('common.api_urls')),
-    path('api/photobooth/', include('core.photobooth.api_urls')),
-    path('api/payments/', include('core.photobooth.payment_urls')),
+    path('api/payments/', include('core.payments.urls')),
     path('api/accounts/', include('core.accounts.api_urls')),
     path('api/accounts/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/accounts/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -42,9 +41,9 @@ urlpatterns = [
 
 schema_view = get_schema_view(
     openapi.Info(
-        title='PhotoBooth API',
+        title='Backend API',
         default_version='v1',
-        description='PhotoBooth backend API',
+        description='Backend API',
         terms_of_service='https://www.google.com/policies/terms/',
         contact=openapi.Contact(email='support@example.com'),
         license=openapi.License(name='MIT License'),

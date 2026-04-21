@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import secrets
 import uuid
@@ -10,8 +9,8 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.http import HttpResponse
-from django.utils.html import escape
 from django.utils import timezone
+from django.utils.html import escape
 from payos import PayOS, APIError as PayOSAPIError
 from payos.types import CreatePaymentLinkRequest
 from rest_framework import status
@@ -19,20 +18,16 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.photobooth.models import CapturePackage, PaymentOrder
-from core.photobooth.models.photobooth_device import PhotoboothDevice
+from core.payments.models import PaymentOrder
 
 logger = logging.getLogger(__name__)
 
 _VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
-
 _PAYOS_ORDER_CODE_MAX = 2_147_483_647
-
 _payos_client = None
 
 
 def _get_payos_client() -> PayOS:
-    """Lazy-init payOS client singleton (tránh lỗi khi settings chưa sẵn sàng lúc import)."""
     global _payos_client
     if _payos_client is None:
         _payos_client = PayOS(
@@ -66,18 +61,15 @@ def _payos_configured() -> bool:
 
 
 def _normalize_description(text: str) -> str:
-    """payOS description tối đa 25 ký tự, chỉ ASCII + số."""
     import re
     cleaned = re.sub(r'[^A-Za-z0-9 ]', '', text)
-    return cleaned[:25].strip() or 'Photobooth'
+    return cleaned[:25].strip() or 'Payment'
 
 
 class PayosCreatePaymentView(APIView):
     """
     POST /api/payments/payos/create/
-
-    Body: { "package_id": 1, "device_id": "...", "booth_id": "..." }
-    Trả checkout_url + qr_code (VietQR). order_id = txn_ref để poll.
+    Body: { "amount_vnd": 50000, "description": "...", "extra_data": {} }
     """
 
     permission_classes = [AllowAny]
@@ -86,64 +78,46 @@ class PayosCreatePaymentView(APIView):
     def post(self, request, *args, **kwargs):
         if not _payos_configured():
             return Response(
-                {
-                    'detail': (
-                        'payOS chưa cấu hình (PAYOS_CLIENT_ID, PAYOS_API_KEY, '
-                        'PAYOS_CHECKSUM_KEY, PAYOS_RETURN_URL, PAYOS_CANCEL_URL).'
-                    ),
-                },
+                {'detail': 'payOS chưa cấu hình (PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY, PAYOS_RETURN_URL, PAYOS_CANCEL_URL).'},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        package_id = request.data.get('package_id')
-        package_code = request.data.get('package_code')
-        booth_id = (request.data.get('booth_id') or '')[:64]
-        device_id = (request.data.get('device_id') or '').strip()
+        amount_vnd = request.data.get('amount_vnd')
+        description = (request.data.get('description') or '')[:255]
+        extra_data = request.data.get('extra_data') or {}
 
-        device = None
-        if device_id:
-            device = PhotoboothDevice.objects.filter(device_id=device_id, is_active=True).first()
-
-        pkg = None
-        if package_id is not None:
-            pkg = CapturePackage.objects.filter(id=package_id, is_active=True).first()
-        elif package_code:
-            pkg = CapturePackage.objects.filter(code=package_code, is_active=True).first()
-
-        if not pkg:
-            return Response(
-                {'detail': 'Không tìm thấy gói hợp lệ.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        if not amount_vnd or not isinstance(amount_vnd, int) or amount_vnd <= 0:
+            return Response({'detail': 'amount_vnd là số nguyên dương.'}, status=status.HTTP_400_BAD_REQUEST)
 
         now_vn = _now_vietnam()
         expires_vn = now_vn + timedelta(minutes=5)
         expires_at_utc = expires_vn.astimezone(dt_timezone.utc)
-        tmp_txn = f'TMP-{secrets.token_hex(12)}'
 
+        tmp_txn = f'TMP-{secrets.token_hex(12)}'
         order = PaymentOrder.objects.create(
             txn_ref=tmp_txn,
-            amount_vnd=pkg.amount_vnd,
-            capture_package=pkg,
-            device=device,
-            booth_id=booth_id,
+            amount_vnd=amount_vnd,
+            description=description,
+            extra_data=extra_data,
             expires_at=expires_at_utc,
             status=PaymentOrder.Status.PENDING,
             payment_method=PaymentOrder.PaymentMethod.VIETQR,
         )
         order.txn_ref = str(order.pk)
+
         try:
             poc = _allocate_payos_order_code()
         except RuntimeError as e:
             order.delete()
             logger.error('payOS: %s', e)
             return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         order.payos_order_code = poc
         order.save(update_fields=['txn_ref', 'payos_order_code', 'updated_at'])
 
         return_url = (settings.PAYOS_RETURN_URL or '').strip()
         cancel_url = (settings.PAYOS_CANCEL_URL or '').strip()
-        desc = _normalize_description(f'{pkg.code} {pkg.name}')
+        desc = _normalize_description(description)
 
         payment_data = CreatePaymentLinkRequest(
             order_code=int(order.payos_order_code),
@@ -153,47 +127,24 @@ class PayosCreatePaymentView(APIView):
             return_url=return_url,
         )
 
-        logger.info(
-            'payOS create: orderCode=%s amount=%s desc=%r',
-            order.payos_order_code,
-            order.amount_vnd,
-            desc,
-        )
-
         try:
             client = _get_payos_client()
             response = client.payment_requests.create(payment_data=payment_data)
         except PayOSAPIError as e:
             order.delete()
-            logger.error(
-                'payOS create rejected: code=%s desc=%s',
-                e.error_code,
-                e.error_desc,
-            )
+            logger.error('payOS create rejected: code=%s desc=%s', e.error_code, e.error_desc)
             return Response(
                 {
                     'detail': e.error_desc or 'payOS từ chối tạo link.',
                     'payos_code': e.error_code,
                     'payos_desc': e.error_desc,
-                    'hint': (
-                        'Kiểm tra trên my.payos.vn: (1) Tổ chức đã xác thực. '
-                        '(2) Đã liên kết tài khoản ngân hàng. '
-                        '(3) Client ID / API Key / Checksum copy đúng cùng một kênh. '
-                        '(4) Còn gói giao dịch.'
-                    ),
                 },
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         except Exception as e:
             order.delete()
             logger.exception('payOS create: unexpected error')
-            return Response(
-                {
-                    'detail': str(e),
-                    'hint': 'Kiểm tra container có ra internet (DNS/firewall) tới api-merchant.payos.vn.',
-                },
-                status=status.HTTP_502_BAD_GATEWAY,
-            )
+            return Response({'detail': str(e)}, status=status.HTTP_502_BAD_GATEWAY)
 
         checkout_url = getattr(response, 'checkout_url', '') or ''
         qr_code = getattr(response, 'qr_code', '') or ''
@@ -210,21 +161,13 @@ class PayosCreatePaymentView(APIView):
                 'order_id': order.txn_ref,
                 'amount_vnd': order.amount_vnd,
                 'expired_at': int(expires_at_utc.timestamp() * 1000),
-                'package': {
-                    'id': pkg.id,
-                    'code': pkg.code,
-                    'name': pkg.name,
-                    'print_count': pkg.print_count,
-                },
             },
             status=status.HTTP_201_CREATED,
         )
 
 
 class PayosWebhookView(APIView):
-    """
-    POST /api/payments/payos/webhook/ — payOS gửi khi thanh toán (đăng ký URL trên my.payos.vn).
-    """
+    """POST /api/payments/payos/webhook/ — payOS gửi khi thanh toán."""
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -238,17 +181,13 @@ class PayosWebhookView(APIView):
         except Exception:
             return Response({'detail': 'Invalid payload'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Verify webhook signature using official SDK
         try:
             client = _get_payos_client()
             webhook_data = client.webhooks.verify(raw_body)
         except Exception as e:
-            # PayOS confirmWebhook gửi ping kiểm tra — có thể không verify được.
-            # Trả 200 để PayOS xác nhận URL hợp lệ, nhưng không xử lý dữ liệu.
             logger.info('payOS webhook verification failed (likely confirm ping): %s', e)
             return Response({'ok': True}, status=status.HTTP_200_OK)
 
-        # payOS gửi confirmation ping khi đăng ký webhook (orderCode=0, amount=0).
         order_code = webhook_data.order_code
         amount = webhook_data.amount
         if order_code == 0:
@@ -263,12 +202,8 @@ class PayosWebhookView(APIView):
             return Response({'detail': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
 
         if amount != order.amount_vnd:
-            logger.warning(
-                'payOS webhook amount mismatch order=%s expected=%s got=%s',
-                order_code,
-                order.amount_vnd,
-                amount,
-            )
+            logger.warning('payOS webhook amount mismatch order=%s expected=%s got=%s',
+                           order_code, order.amount_vnd, amount)
             return Response({'detail': 'Amount mismatch'}, status=status.HTTP_400_BAD_REQUEST)
 
         if order.status == PaymentOrder.Status.PAID:
@@ -291,7 +226,7 @@ class PayosWebhookView(APIView):
 
 
 class PayosReturnView(APIView):
-    """GET /api/payments/payos/return/ — redirect sau thanh toán (chỉ hiển thị)."""
+    """GET /api/payments/payos/return/"""
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -304,14 +239,13 @@ class PayosReturnView(APIView):
             '<body><p>Đã quay lại từ payOS.</p>'
             f'<p>code: {escape(code)}</p>'
             f'<p>id: {escape(order_id)}</p>'
-            '<p>Bạn có thể đóng trang và quay lại photobooth — ứng dụng sẽ tự xác nhận qua webhook / kiểm tra định kỳ.</p>'
-            '</body></html>'
+            '<p>Bạn có thể đóng trang này.</p></body></html>'
         )
         return HttpResponse(body, content_type='text/html; charset=utf-8')
 
 
 class PayosCancelReturnView(APIView):
-    """GET /api/payments/payos/cancel/ — sau khi hủy trên payOS."""
+    """GET /api/payments/payos/cancel/"""
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -320,6 +254,6 @@ class PayosCancelReturnView(APIView):
         body = (
             '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Hủy thanh toán</title></head>'
             '<body><p>Giao dịch đã hủy hoặc chưa hoàn tất.</p>'
-            '<p>Bạn có thể đóng trang và quay lại photobooth.</p></body></html>'
+            '<p>Bạn có thể đóng trang này.</p></body></html>'
         )
         return HttpResponse(body, content_type='text/html; charset=utf-8')

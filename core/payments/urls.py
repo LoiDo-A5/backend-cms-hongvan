@@ -1,17 +1,17 @@
 from django.urls import path
 
-from core.photobooth.api.payos_views import (
+from core.payments.payos_views import (
     PayosCreatePaymentView,
     PayosWebhookView,
     PayosReturnView,
     PayosCancelReturnView,
 )
-from core.photobooth.api.paypal_views import (
+from core.payments.paypal_views import (
     PaypalCreatePaymentView,
     PaypalReturnView,
     PaypalCancelView,
 )
-from core.photobooth.api.vnpay_views import (
+from core.payments.vnpay_views import (
     PaymentStatusView,
     VnpayCreatePaymentView,
     VnpayIpnView,
