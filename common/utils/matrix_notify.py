@@ -59,7 +59,7 @@ def _send_sync(device_name: str, error_key: str, detail: str, printer_name: str)
 
     label = ERROR_LABELS.get(error_key, f"⚠️ {error_key}")
     body_lines = [
-        f"📷 *Photobooth Alert*",
+        f"📷 *Ward Alert*",
         f"Máy: *{device_name}*",
         f"Lỗi: *{label}*",
     ]
@@ -106,7 +106,7 @@ def notify_printer_error(
     Gửi thông báo lên Matrix (không block). Có cooldown 5 phút/device/lỗi.
 
     Args:
-        device_name: Tên thiết bị (photobooth 1, ...)
+        device_name: Tên thiết bị (ward 1, ...)
         error_key:   Mã lỗi: paper_jam | no_paper | disconnected | hardware_error | print_failed | ...
         detail:      Mô tả chi tiết lỗi (optional)
         printer_name: Tên máy in (Canon SELPHY CP1500, ...)

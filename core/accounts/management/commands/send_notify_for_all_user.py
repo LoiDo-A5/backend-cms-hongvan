@@ -13,6 +13,6 @@ class Command(BaseCommand):
             make_notification_message(
                 user=user,
                 content_code=NOTIFICATIONS_CONTENT_CODE.GENERIC,
-                content_params={'message': 'PhotoBooth: you have a new notification.'},
+                content_params={'message': 'Ward: you have a new notification.'},
             )
         self.stdout.write(self.style.SUCCESS('Done.'))

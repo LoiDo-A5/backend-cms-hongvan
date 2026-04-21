@@ -1,3 +1,5 @@
+name: ward
+
 networks:
   lan_access:
     driver: bridge
@@ -64,13 +66,13 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: db
+      POSTGRES_DB: ward_db
     volumes:
       - postgres_db:/var/lib/postgresql/data
     networks:
       - lan_access
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U root -d db"]
+      test: ["CMD-SHELL", "pg_isready -U root -d ward_db"]
       interval: 5s
       timeout: 5s
       retries: 100
