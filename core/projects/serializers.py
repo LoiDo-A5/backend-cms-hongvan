@@ -1,0 +1,160 @@
+import json
+from uuid import uuid4
+
+from django.core.files.storage import default_storage
+from rest_framework import serializers
+
+from core.projects.models import Project
+
+
+class ProjectListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = (
+            'id',
+            'name',
+            'is_visible',
+            'active',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'active', 'created_at', 'updated_at')
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    website_card_thumbnail = serializers.ImageField(required=False, allow_null=True)
+    hero_image = serializers.ImageField(required=False, allow_null=True)
+    section_background_image = serializers.ImageField(required=False, allow_null=True)
+    accordion_background_image = serializers.ImageField(required=False, allow_null=True)
+    features = serializers.JSONField(required=False)
+    accordion_items = serializers.JSONField(required=False)
+
+    class Meta:
+        model = Project
+        fields = (
+            'id',
+            'name',
+            'is_visible',
+            'active',
+            'website_card_title',
+            'website_card_content',
+            'website_card_thumbnail',
+            'hero_title',
+            'hero_content',
+            'hero_image',
+            'section_background_image',
+            'features',
+            'cta_title',
+            'cta_content',
+            'cta_button_label',
+            'cta_button_url',
+            'long_description_title',
+            'long_description',
+            'accordion_title',
+            'accordion_background_image',
+            'accordion_items',
+            'created_at',
+            'updated_at',
+        )
+        read_only_fields = ('id', 'active', 'created_at', 'updated_at')
+        extra_kwargs = {
+            'name': {'required': False, 'allow_blank': True},
+            'website_card_title': {'required': False, 'allow_blank': True},
+            'website_card_content': {'required': False, 'allow_blank': True},
+            'hero_title': {'required': False, 'allow_blank': True},
+            'hero_content': {'required': False, 'allow_blank': True},
+            'cta_title': {'required': False, 'allow_blank': True},
+            'cta_content': {'required': False, 'allow_blank': True},
+            'cta_button_label': {'required': False, 'allow_blank': True},
+            'cta_button_url': {'required': False, 'allow_blank': True},
+            'long_description_title': {'required': False, 'allow_blank': True},
+            'long_description': {'required': False, 'allow_blank': True},
+            'accordion_title': {'required': False, 'allow_blank': True},
+        }
+
+    def to_internal_value(self, data):
+        if hasattr(data, 'items'):
+            data = {key: data.get(key) for key in data.keys()}
+
+        for field_name in ('features', 'accordion_items'):
+            raw_value = data.get(field_name)
+            if isinstance(raw_value, str) and raw_value:
+                try:
+                    data[field_name] = json.loads(raw_value)
+                except json.JSONDecodeError as exc:
+                    raise serializers.ValidationError({field_name: 'Dữ liệu JSON không hợp lệ.'}) from exc
+
+        return super().to_internal_value(data)
+
+    def validate_features(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Danh sách tính năng phải là một mảng.')
+        return value
+
+    def validate_accordion_items(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError('Danh sách accordion phải là một mảng.')
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        primary_name = (
+            attrs.get('website_card_title')
+            or attrs.get('hero_title')
+            or attrs.get('name')
+            or getattr(self.instance, 'name', '')
+        )
+
+        if not primary_name:
+            raise serializers.ValidationError({
+                'website_card_title': 'Vui lòng nhập tiêu đề thẻ hiển thị ngoài website.',
+            })
+
+        attrs['name'] = primary_name
+        return attrs
+
+    def create(self, validated_data):
+        features = validated_data.pop('features', [])
+        project = super().create(validated_data)
+        project.features = self._attach_feature_icons(features)
+        project.save(update_fields=['features'])
+        return project
+
+    def update(self, instance, validated_data):
+        features = validated_data.pop('features', None)
+        project = super().update(instance, validated_data)
+        if features is not None:
+            project.features = self._attach_feature_icons(features, existing=project.features)
+            project.save(update_fields=['features'])
+        return project
+
+    def _attach_feature_icons(self, features, existing=None):
+        request = self.context.get('request')
+        uploaded_files = getattr(request, 'FILES', None)
+        existing = existing or []
+        normalized_features = []
+
+        for index, feature in enumerate(features):
+            normalized_feature = dict(feature)
+            upload_key = f'feature_icon_{index}'
+            uploaded_file = uploaded_files.get(upload_key) if uploaded_files else None
+
+            if uploaded_file is not None:
+                file_name = default_storage.save(
+                    f'projects/features/{uuid4()}_{uploaded_file.name}',
+                    uploaded_file,
+                )
+                normalized_feature['icon_url'] = default_storage.url(file_name)
+            elif index < len(existing) and isinstance(existing[index], dict):
+                existing_icon_url = existing[index].get('icon_url')
+                if existing_icon_url and 'icon_url' not in normalized_feature:
+                    normalized_feature['icon_url'] = existing_icon_url
+
+            normalized_features.append(normalized_feature)
+
+        return normalized_features
+
+
+class ProjectListResponseSerializer(serializers.Serializer):
+    counts = serializers.DictField(child=serializers.IntegerField())
+    results = ProjectListSerializer(many=True)

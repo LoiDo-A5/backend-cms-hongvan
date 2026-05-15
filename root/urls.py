@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/common/', include('common.api_urls')),
     path('api/payments/', include('core.payments.urls')),
     path('api/accounts/', include('core.accounts.api_urls')),
+    path('api/projects/', include('core.projects.api_urls')),
     path('api/accounts/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/accounts/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('policy/', TemplateView.as_view(template_name='policy.html')),

@@ -1,0 +1,85 @@
+from rest_framework import status
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.parsers import FormParser
+from rest_framework.parsers import JSONParser
+from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from core.projects.models import Project
+from core.projects.serializers import ProjectListResponseSerializer
+from core.projects.serializers import ProjectListSerializer
+from core.projects.serializers import ProjectSerializer
+
+
+class ProjectViewSet(viewsets.ModelViewSet):
+    serializer_class = ProjectSerializer
+    permission_classes = (IsAuthenticated,)
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return ProjectListSerializer
+        return super().get_serializer_class()
+
+    def get_queryset(self):
+        queryset = Project.all_objects.all()
+        search = self.request.query_params.get('search', '').strip()
+        status_filter = self.request.query_params.get('status', 'all').strip().lower()
+
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+
+        if status_filter == 'published':
+            queryset = queryset.filter(active=True)
+        elif status_filter == 'deleted':
+            queryset = queryset.filter(active=False)
+
+        return queryset.order_by('-updated_at', '-id')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = ProjectListSerializer(queryset, many=True)
+        response_serializer = ProjectListResponseSerializer(
+            instance={
+                'counts': {
+                    'all': Project.all_objects.count(),
+                    'published': Project.objects.count(),
+                    'deleted': Project.all_objects.filter(active=False).count(),
+                },
+                'results': serializer.data,
+            },
+        )
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, updated_by=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        project = self.get_object()
+        project.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['POST'])
+    def toggle_visibility(self, request, *args, **kwargs):
+        project = self.get_object()
+        project.is_visible = not project.is_visible
+        project.updated_by = request.user
+        project.save()
+
+        serializer = self.get_serializer(project)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['POST'])
+    def restore(self, request, *args, **kwargs):
+        project = self.get_object()
+        project.active = True
+        project.updated_by = request.user
+        project.save()
+
+        serializer = self.get_serializer(project)
+        return Response(serializer.data, status=status.HTTP_200_OK)

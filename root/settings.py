@@ -191,6 +191,7 @@ INSTALLED_APPS = [
     'core.accounts.custom_providers.custom_google',
 
     'common',
+    'core.projects',
     'core.payments',
 ]
 
