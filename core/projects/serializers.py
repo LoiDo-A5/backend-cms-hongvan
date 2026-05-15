@@ -69,6 +69,11 @@ class ProjectSerializer(serializers.ModelSerializer):
     section_background_image = serializers.ImageField(required=False, allow_null=True)
     accordion_background_image = serializers.ImageField(required=False, allow_null=True)
     project_video = serializers.FileField(required=False, allow_null=True)
+    clear_website_card_thumbnail = serializers.BooleanField(required=False, write_only=True, default=False)
+    clear_hero_image = serializers.BooleanField(required=False, write_only=True, default=False)
+    clear_section_background_image = serializers.BooleanField(required=False, write_only=True, default=False)
+    clear_accordion_background_image = serializers.BooleanField(required=False, write_only=True, default=False)
+    clear_project_video = serializers.BooleanField(required=False, write_only=True, default=False)
     features = serializers.JSONField(required=False)
     accordion_items = serializers.JSONField(required=False)
 
@@ -82,22 +87,27 @@ class ProjectSerializer(serializers.ModelSerializer):
             'website_card_title',
             'website_card_content',
             'website_card_thumbnail',
+            'clear_website_card_thumbnail',
             'hero_title',
             'hero_content',
             'hero_image',
+            'clear_hero_image',
             'section_background_mode',
             'section_background_color',
             'section_background_image',
+            'clear_section_background_image',
             'features',
             'cta_title',
             'cta_content',
             'cta_button_label',
             'cta_button_url',
             'project_video',
+            'clear_project_video',
             'long_description_title',
             'long_description',
             'accordion_title',
             'accordion_background_image',
+            'clear_accordion_background_image',
             'accordion_items',
             'created_at',
             'updated_at',
@@ -191,8 +201,30 @@ class ProjectSerializer(serializers.ModelSerializer):
         return project
 
     def update(self, instance, validated_data):
+        clear_file_fields = {
+            'website_card_thumbnail': validated_data.pop('clear_website_card_thumbnail', False),
+            'hero_image': validated_data.pop('clear_hero_image', False),
+            'section_background_image': validated_data.pop('clear_section_background_image', False),
+            'accordion_background_image': validated_data.pop('clear_accordion_background_image', False),
+            'project_video': validated_data.pop('clear_project_video', False),
+        }
         features = validated_data.pop('features', None)
         project = super().update(instance, validated_data)
+
+        cleared_fields = []
+        for field_name, should_clear in clear_file_fields.items():
+            if not should_clear:
+                continue
+
+            field_file = getattr(project, field_name)
+            if field_file:
+                field_file.delete(save=False)
+            setattr(project, field_name, None)
+            cleared_fields.append(field_name)
+
+        if cleared_fields:
+            project.save(update_fields=cleared_fields)
+
         if features is not None:
             project.features = self._attach_feature_icons(features, existing=project.features)
             project.save(update_fields=['features'])
