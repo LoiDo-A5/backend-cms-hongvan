@@ -1,4 +1,5 @@
 import json
+import re
 from uuid import uuid4
 
 from django.core.files.storage import default_storage
@@ -21,11 +22,53 @@ class ProjectListSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'active', 'created_at', 'updated_at')
 
 
+class ProjectPublicCardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = (
+            'id',
+            'website_card_title',
+            'website_card_content',
+            'website_card_thumbnail',
+        )
+        read_only_fields = fields
+
+
+class ProjectPublicDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = (
+            'id',
+            'name',
+            'website_card_title',
+            'website_card_content',
+            'website_card_thumbnail',
+            'hero_title',
+            'hero_content',
+            'hero_image',
+            'section_background_mode',
+            'section_background_color',
+            'section_background_image',
+            'features',
+            'cta_title',
+            'cta_content',
+            'cta_button_label',
+            'cta_button_url',
+            'project_video',
+            'long_description_title',
+            'long_description',
+            'accordion_background_image',
+            'accordion_items',
+        )
+        read_only_fields = fields
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     website_card_thumbnail = serializers.ImageField(required=False, allow_null=True)
     hero_image = serializers.ImageField(required=False, allow_null=True)
     section_background_image = serializers.ImageField(required=False, allow_null=True)
     accordion_background_image = serializers.ImageField(required=False, allow_null=True)
+    project_video = serializers.FileField(required=False, allow_null=True)
     features = serializers.JSONField(required=False)
     accordion_items = serializers.JSONField(required=False)
 
@@ -42,12 +85,15 @@ class ProjectSerializer(serializers.ModelSerializer):
             'hero_title',
             'hero_content',
             'hero_image',
+            'section_background_mode',
+            'section_background_color',
             'section_background_image',
             'features',
             'cta_title',
             'cta_content',
             'cta_button_label',
             'cta_button_url',
+            'project_video',
             'long_description_title',
             'long_description',
             'accordion_title',
@@ -63,6 +109,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             'website_card_content': {'required': False, 'allow_blank': True},
             'hero_title': {'required': False, 'allow_blank': True},
             'hero_content': {'required': False, 'allow_blank': True},
+            'section_background_color': {'required': False, 'allow_blank': True, 'allow_null': True},
             'cta_title': {'required': False, 'allow_blank': True},
             'cta_content': {'required': False, 'allow_blank': True},
             'cta_button_label': {'required': False, 'allow_blank': True},
@@ -96,6 +143,16 @@ class ProjectSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Danh sách accordion phải là một mảng.')
         return value
 
+    def validate_section_background_color(self, value):
+        normalized = (value or '').strip()
+        if not normalized:
+            return None
+
+        if not re.fullmatch(r'#[0-9A-Fa-f]{6}', normalized):
+            raise serializers.ValidationError('Màu nền section phải có định dạng HEX, ví dụ #030303.')
+
+        return normalized.upper()
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
         primary_name = (
@@ -111,6 +168,19 @@ class ProjectSerializer(serializers.ModelSerializer):
             })
 
         attrs['name'] = primary_name
+        section_background_mode = attrs.get(
+            'section_background_mode',
+            getattr(self.instance, 'section_background_mode', Project.SECTION_BACKGROUND_MODE_COLOR),
+        )
+        attrs['section_background_mode'] = section_background_mode
+
+        if section_background_mode == Project.SECTION_BACKGROUND_MODE_COLOR:
+            if 'section_background_color' not in attrs and self.instance is not None:
+                attrs['section_background_color'] = self.instance.section_background_color
+
+        elif self.instance is None and 'section_background_color' not in attrs:
+            attrs['section_background_color'] = None
+
         return attrs
 
     def create(self, validated_data):

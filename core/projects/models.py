@@ -6,6 +6,13 @@ from common.abstract_models.image_field import CustomImageField
 
 
 class Project(ActiveModel):
+    SECTION_BACKGROUND_MODE_COLOR = 'color'
+    SECTION_BACKGROUND_MODE_IMAGE = 'image'
+    SECTION_BACKGROUND_MODE_CHOICES = (
+        (SECTION_BACKGROUND_MODE_COLOR, 'Màu nền'),
+        (SECTION_BACKGROUND_MODE_IMAGE, 'Ảnh nền'),
+    )
+
     name = models.CharField(max_length=255, db_index=True)
     is_visible = models.BooleanField(default=True, db_index=True)
     website_card_title = models.CharField(max_length=255, blank=True)
@@ -14,12 +21,19 @@ class Project(ActiveModel):
     hero_title = models.CharField(max_length=255, blank=True)
     hero_content = models.TextField(blank=True)
     hero_image = CustomImageField(blank=True, null=True)
+    section_background_mode = models.CharField(
+        max_length=16,
+        choices=SECTION_BACKGROUND_MODE_CHOICES,
+        default=SECTION_BACKGROUND_MODE_COLOR,
+    )
+    section_background_color = models.CharField(max_length=7, blank=True, null=True, default=None)
     section_background_image = CustomImageField(blank=True, null=True)
     features = models.JSONField(default=list, blank=True)
     cta_title = models.CharField(max_length=255, blank=True)
     cta_content = models.TextField(blank=True)
     cta_button_label = models.CharField(max_length=255, blank=True)
     cta_button_url = models.URLField(blank=True)
+    project_video = models.FileField(upload_to='projects/videos/', blank=True, null=True)
     long_description_title = models.CharField(max_length=255, blank=True)
     long_description = models.TextField(blank=True)
     accordion_title = models.CharField(max_length=255, blank=True)

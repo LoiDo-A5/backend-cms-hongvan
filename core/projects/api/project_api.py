@@ -1,15 +1,19 @@
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import FormParser
 from rest_framework.parsers import JSONParser
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core.projects.models import Project
 from core.projects.serializers import ProjectListResponseSerializer
 from core.projects.serializers import ProjectListSerializer
+from core.projects.serializers import ProjectPublicCardSerializer
+from core.projects.serializers import ProjectPublicDetailSerializer
 from core.projects.serializers import ProjectSerializer
 
 
@@ -19,9 +23,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
     parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def get_serializer_class(self):
+        if self.action == 'public_detail':
+            return ProjectPublicDetailSerializer
+        if self.action == 'public_cards':
+            return ProjectPublicCardSerializer
         if self.action == 'list':
             return ProjectListSerializer
         return super().get_serializer_class()
+
+    def get_permissions(self):
+        if self.action in {'public_cards', 'public_detail'}:
+            return [AllowAny()]
+        return super().get_permissions()
 
     def get_queryset(self):
         queryset = Project.all_objects.all()
@@ -52,6 +65,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
             },
         )
         return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['GET'])
+    def public_cards(self, request, *args, **kwargs):
+        queryset = Project.objects.filter(is_visible=True).order_by('-updated_at', '-id')
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['GET'])
+    def public_detail(self, request, *args, **kwargs):
+        project = get_object_or_404(Project.objects.filter(is_visible=True), pk=kwargs['pk'])
+        serializer = self.get_serializer(project)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
