@@ -82,6 +82,36 @@ class ProjectApiTests(BaseUserTest):
         self.project_1.refresh_from_db()
         self.assertFalse(self.project_1.is_visible)
 
+    def test_update_project(self):
+        response = self.client.patch(
+            f'/api/projects/projects/{self.project_1.id}/',
+            {
+                'website_card_title': 'Dự án bảo tồn di sản đã cập nhật',
+                'hero_title': 'Hero mới',
+                'hero_content': 'Nội dung hero mới',
+                'features': [
+                    {
+                        'icon_label': 'Biểu tượng mới',
+                        'title': 'Tính năng đã cập nhật',
+                        'description': 'Mô tả đã cập nhật.',
+                    },
+                ],
+                'accordion_items': [
+                    {
+                        'title': 'Accordion mới',
+                        'content': 'Nội dung accordion mới.',
+                    },
+                ],
+            },
+            format='json',
+        )
+
+        self.assertResponseStatus(response, status.HTTP_200_OK)
+        self.project_1.refresh_from_db()
+        self.assertEqual(self.project_1.name, 'Dự án bảo tồn di sản đã cập nhật')
+        self.assertEqual(self.project_1.hero_title, 'Hero mới')
+        self.assertEqual(self.project_1.features[0]['title'], 'Tính năng đã cập nhật')
+
     def test_soft_delete_project(self):
         response = self.client.delete(f'/api/projects/projects/{self.project_2.id}/')
 
