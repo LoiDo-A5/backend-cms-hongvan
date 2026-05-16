@@ -194,6 +194,13 @@ class ProjectSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        # Remove clear_* fields that are only for updates
+        validated_data.pop('clear_website_card_thumbnail', False)
+        validated_data.pop('clear_hero_image', False)
+        validated_data.pop('clear_section_background_image', False)
+        validated_data.pop('clear_accordion_background_image', False)
+        validated_data.pop('clear_project_video', False)
+        
         features = validated_data.pop('features', [])
         project = super().create(validated_data)
         project.features = self._attach_feature_icons(features)

@@ -37,17 +37,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
-        queryset = Project.all_objects.all()
+        queryset = Project.objects.all()
         search = self.request.query_params.get('search', '').strip()
         status_filter = self.request.query_params.get('status', 'all').strip().lower()
 
         if search:
             queryset = queryset.filter(name__icontains=search)
 
-        if status_filter == 'published':
-            queryset = queryset.filter(active=True)
-        elif status_filter == 'deleted':
-            queryset = queryset.filter(active=False)
+        if status_filter == 'deleted':
+            queryset = Project.all_objects.filter(active=False)
+
+            if search:
+                queryset = queryset.filter(name__icontains=search)
 
         return queryset.order_by('-updated_at', '-id')
 
@@ -57,7 +58,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         response_serializer = ProjectListResponseSerializer(
             instance={
                 'counts': {
-                    'all': Project.all_objects.count(),
+                    'all': Project.objects.count(),
                     'published': Project.objects.count(),
                     'deleted': Project.all_objects.filter(active=False).count(),
                 },
@@ -86,7 +87,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         project = self.get_object()
-        project.delete()
+        project.delete(hard=True)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['POST'])

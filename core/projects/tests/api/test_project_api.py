@@ -18,10 +18,10 @@ class ProjectApiTests(BaseUserTest):
         response = self.client.get('/api/projects/projects/')
 
         self.assertResponseStatus(response, status.HTTP_200_OK)
-        self.assertEqual(response.data['counts']['all'], 3)
+        self.assertEqual(response.data['counts']['all'], 2)
         self.assertEqual(response.data['counts']['published'], 2)
         self.assertEqual(response.data['counts']['deleted'], 1)
-        self.assertEqual(len(response.data['results']), 3)
+        self.assertEqual(len(response.data['results']), 2)
 
     def test_search_projects(self):
         response = self.client.get('/api/projects/projects/?search=ảnh')
@@ -112,9 +112,8 @@ class ProjectApiTests(BaseUserTest):
         self.assertEqual(self.project_1.hero_title, 'Hero mới')
         self.assertEqual(self.project_1.features[0]['title'], 'Tính năng đã cập nhật')
 
-    def test_soft_delete_project(self):
+    def test_hard_delete_project(self):
         response = self.client.delete(f'/api/projects/projects/{self.project_2.id}/')
 
         self.assertResponseStatus(response, status.HTTP_204_NO_CONTENT)
-        self.project_2.refresh_from_db()
-        self.assertFalse(self.project_2.active)
+        self.assertFalse(Project.all_objects.filter(pk=self.project_2.id).exists())
