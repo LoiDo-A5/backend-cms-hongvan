@@ -1,4 +1,4 @@
-name: ward
+name: cms-backend-prod
 
 networks:
   lan_access:
@@ -19,7 +19,7 @@ services:
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
     volumes:
       - .:/app/
-      - /mnt/docker-nfs/cms-media:/mnt/docker-nfs/cms-media
+      - /mnt/docker-nfs/cms-media:/media
     depends_on:
       redis:
         condition: service_healthy
@@ -42,23 +42,6 @@ services:
       timeout: 5s
       retries: 20
       start_period: 15s
-
-  nginx:
-    image: nginx:1.25-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      - ./static:/app/static:ro
-      - /mnt/docker-nfs/cms-media:/mnt/docker-nfs/cms-media:ro
-    depends_on:
-      app:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - default
 
   redis:
     image: redis:7-alpine
