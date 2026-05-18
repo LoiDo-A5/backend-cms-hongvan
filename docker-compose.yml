@@ -19,7 +19,7 @@ services:
 
     volumes:
       - ./app/:/app
-      - /mnt/docker-nfs/cms-media:/app/media:rw
+      - ./app/cms-media:/app/cms-media:rw
 
     depends_on:
       redis:
