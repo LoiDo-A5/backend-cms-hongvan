@@ -593,11 +593,6 @@ LOGGING = {
     },
 }
 
-# Cho phép upload tối đa 10MB (thay đổi số byte tùy nhu cầu)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  
-
-# Nếu bạn gửi nhiều trường dữ liệu hoặc file qua form
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760
 # two factor
 LOGIN_URL = 'login'
 TWO_FACTOR_PATCH_ADMIN = False
