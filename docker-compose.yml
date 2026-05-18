@@ -31,11 +31,11 @@ services:
       - proxy
 
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.cms-backend.rule=Host(`cms-api.hongvan.net`)"
-      - "traefik.http.routers.cms-backend.entrypoints=websecure"
-      - "traefik.http.routers.cms-backend.tls=true"
-      - "traefik.http.services.cms-backend.loadbalancer.server.port=8002"
+    - "traefik.enable=true"
+    - "traefik.http.routers.cms-backend.rule=Host(`cms-api.hongvan.net`)"
+    - "traefik.http.routers.cms-backend.entrypoints=websecure"
+    - "traefik.http.routers.cms-backend.tls=true"
+    - "traefik.http.services.cms-backend.loadbalancer.server.port=8002"
 
   redis:
     image: redis:7-alpine
