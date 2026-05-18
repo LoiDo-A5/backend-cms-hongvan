@@ -1,7 +1,7 @@
 name: cms-backend-prod
 
 networks:
-  lan_access:
+  proxy:
     driver: bridge
 
 services:
@@ -18,7 +18,8 @@ services:
       POETRY_VIRTUALENVS_CREATE: "false"
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
     volumes:
-      - .:/app/
+      - ./app:/app
+      - ./.env.local:/app/.env:ro
       - /mnt/docker-nfs/cms-media:/media
     depends_on:
       redis:
@@ -34,8 +35,7 @@ services:
     expose:
       - "8002"
     networks:
-      - default
-      - lan_access
+      - proxy
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',8002)); s.close()\""]
       interval: 5s
@@ -45,12 +45,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    networks:
-      - lan_access
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 5
-
-volumes:
+      retries: 5   
+    networks:
+      - proxy

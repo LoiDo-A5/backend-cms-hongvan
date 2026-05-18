@@ -15,9 +15,10 @@ FROM build AS container-prod
 RUN pip install uwsgi ddtrace
 
 COPY app/. .
+COPY app/. .
+COPY .env.production .env
 
 RUN poetry install --only main --no-root \
-&& cp .env.production .env \
 && poetry run python manage.py compilemessages \
 && rm .env \
 && rm -rf /root/.cache/pip/

@@ -1,7 +1,7 @@
 name: cms-backend-dev
 
 networks:
-  lan_access:
+  proxy:
     driver: bridge
 
 services:
@@ -18,7 +18,8 @@ services:
       POETRY_VIRTUALENVS_CREATE: "false"
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
     volumes:
-      - .:/app/
+      - ./app:/app
+      - ./.env.local:/app/.env:ro
       - /mnt/docker-nfs/cms-media:/media
     depends_on:
       redis:
@@ -27,8 +28,7 @@ services:
     ports:
       - "8002:8002"
     networks:
-      - lan_access
-      - default
+      - proxy
   redis:
     image: redis:7-alpine
     healthcheck:
@@ -36,3 +36,5 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - proxy
