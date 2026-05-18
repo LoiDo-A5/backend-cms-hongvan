@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: cms-backend-dev
 
 networks:
@@ -47,3 +48,45 @@ services:
       retries: 5
     networks:
       - proxy
+=======
+name: cms-backend-dev
+
+networks:
+  proxy:
+    driver: bridge
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        BUILD_ENV: dev
+      target: container-dev
+      network: host
+    # Tránh mount .venv Windows → Linux: poetry run tạo lại .venv trống → không có Django.
+    # Khớp Dockerfile (poetry config virtualenvs.create false): dùng Python system trong image.
+    environment:
+      POETRY_VIRTUALENVS_CREATE: "false"
+      POETRY_VIRTUALENVS_IN_PROJECT: "false"
+    volumes:
+      - ./app/:/app
+      - ./.env.local:/app/.env:ro
+      - /mnt/docker-nfs/cms-media:/media
+    depends_on:
+      redis:
+          condition: service_healthy
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8002"]
+    ports:
+      - "8002:8002"
+    networks:
+      - proxy
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - proxy
+>>>>>>> 3804e042057e55353c19064ab24dd707cb621afb
