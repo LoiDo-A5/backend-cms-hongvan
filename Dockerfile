@@ -30,6 +30,7 @@ COPY app/. .
 
 RUN poetry install --no-root \
 && poetry run python manage.py compilemessages \
+&& poetry run python manage.py collectstatic --clear \
 && rm .env \
 && rm -rf /root/.cache/pip/
 
