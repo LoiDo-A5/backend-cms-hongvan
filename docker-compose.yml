@@ -1,4 +1,4 @@
-name: ward
+name: cms-backend
 
 networks:
   lan_access:
@@ -19,12 +19,9 @@ services:
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
     volumes:
       - .:/app/
-      - ~/.ssh:/root/.ssh
       - backend_env:/root/.cache/
     depends_on:
       redis:
-          condition: service_healthy
-      postgres:
           condition: service_healthy
     command: ["python", "manage.py", "runserver", "0.0.0.0:8002"]
     ports:
@@ -32,22 +29,6 @@ services:
     networks:
       - lan_access
       - default
-  postgres:
-    # Alpine: manifest đa kiến trúc ổn định (amd64 + arm64). Không set platform để Docker chọn đúng CPU máy bạn.
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: ward_db
-    volumes:
-      - postgres_db:/var/lib/postgresql/data
-    networks:
-      - lan_access
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U root -d ward_db" ]
-      interval: 5s
-      timeout: 5s
-      retries: 100
   redis:
     image: redis:7-alpine
     healthcheck:
@@ -55,13 +36,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-
-  mqtt:
-    image: eclipse-mosquitto:2
-    ports:
-      - "1884:1883"
-    networks:
-      - lan_access
 
 volumes:
   postgres_db:
