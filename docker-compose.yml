@@ -19,7 +19,6 @@ services:
 
     volumes:
       - ./app/:/app
-      - ./.env.local:/app/.env:ro
       - /mnt/docker-nfs/cms-media:/media
 
     depends_on:

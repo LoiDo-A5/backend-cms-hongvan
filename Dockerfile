@@ -27,7 +27,6 @@ RUN poetry install --only main --no-root \
 FROM build AS container-dev
 
 COPY app/. .
-COPY .env.local .env
 
 RUN poetry install --no-root \
 && poetry run python manage.py compilemessages \
