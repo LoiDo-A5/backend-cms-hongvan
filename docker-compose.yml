@@ -2,7 +2,7 @@ name: cms-backend-dev
 
 networks:
   proxy:
-    driver: bridge
+    external: true
 
 services:
   app:
@@ -12,23 +12,32 @@ services:
         BUILD_ENV: dev
       target: container-dev
       network: host
-    # Tránh mount .venv Windows → Linux: poetry run tạo lại .venv trống → không có Django.
-    # Khớp Dockerfile (poetry config virtualenvs.create false): dùng Python system trong image.
+
     environment:
       POETRY_VIRTUALENVS_CREATE: "false"
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
+
     volumes:
-      - ./app:/app
+      - ./app/:/app
       - ./.env.local:/app/.env:ro
       - /mnt/docker-nfs/cms-media:/media
+
     depends_on:
       redis:
-          condition: service_healthy
+        condition: service_healthy
+
     command: ["python", "manage.py", "runserver", "0.0.0.0:8002"]
-    ports:
-      - "8002:8002"
+
     networks:
       - proxy
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cms-backend.rule=Host(`cms-api.hongvan.net`)"
+      - "traefik.http.routers.cms-backend.entrypoints=websecure"
+      - "traefik.http.routers.cms-backend.tls=true"
+      - "traefik.http.services.cms-backend.loadbalancer.server.port=8002"
+
   redis:
     image: redis:7-alpine
     healthcheck:
