@@ -44,6 +44,7 @@ env = environ.Env(
     SENDGRID_API_KEY=(str, ''),
     SENDGRID_SANDBOX_MODE_IN_DEBUG=(bool, False),
     DEFAULT_FILE_STORAGE=(str, 'django.core.files.storage.FileSystemStorage'),
+    MEDIA_ROOT=(str, ''),
     MEDIA_URL=(str, '/media/'),
     AWS_S3_CUSTOM_DOMAIN=(str, ''),
     AWS_STORAGE_BUCKET_NAME=(str, 'aws'),
@@ -326,7 +327,7 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = (
     root('staticfiles'),
 )
-MEDIA_ROOT = root('media')
+MEDIA_ROOT = env('MEDIA_ROOT') or root('media')
 MEDIA_URL = env('MEDIA_URL')
 
 # https://github.com/pmclanahan/django-celery-email
