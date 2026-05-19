@@ -36,6 +36,7 @@ services:
     - "traefik.http.routers.cms-backend.entrypoints=websecure"
     - "traefik.http.routers.cms-backend.tls=true"
     - "traefik.http.services.cms-backend.loadbalancer.server.port=8002"
+    - "traefik.docker.network=proxy"
 
   redis:
     image: redis:7-alpine
