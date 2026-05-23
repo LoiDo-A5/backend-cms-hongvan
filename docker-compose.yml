@@ -1,8 +1,9 @@
 name: cms-backend-dev
 
 networks:
-  proxy:
+  app-net:
     external: true
+    name: app-net
 
 services:
   app:
@@ -27,23 +28,20 @@ services:
 
     command: ["python", "manage.py", "runserver", "0.0.0.0:8002"]
 
-    networks:
-      - proxy
+    ports:
+      - "8002:8002"
 
-    labels:
-    - "traefik.enable=true"
-    - "traefik.http.routers.cms-backend.rule=Host(`cms-api.hongvan.net`)"
-    - "traefik.http.routers.cms-backend.entrypoints=websecure"
-    - "traefik.http.routers.cms-backend.tls=true"
-    - "traefik.http.services.cms-backend.loadbalancer.server.port=8002"
-    - "traefik.docker.network=proxy"
+    networks:
+      - app-net
 
   redis:
     image: redis:7-alpine
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+
     networks:
-      - proxy
+      - app-net
