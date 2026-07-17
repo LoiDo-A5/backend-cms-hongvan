@@ -1,8 +1,9 @@
 name: cms-backend-prod
 
 networks:
-  proxy:
-    driver: bridge
+  app-net:
+    external: true
+    name: ${DOCKER_NETWORK_NAME:-shared-prod-net}
 
 services:
   app:
@@ -12,12 +13,19 @@ services:
         BUILD_ENV: prod
       target: container-prod
       network: host
+    restart: unless-stopped
+
     environment:
       POETRY_VIRTUALENVS_CREATE: "false"
       POETRY_VIRTUALENVS_IN_PROJECT: "false"
+    
+    env_file:
+      - .env.production
+
     volumes:
-      - ./app:/app
       - /mnt/docker-nfs/cms-media:/media
+      - static-data:/app/static
+
     depends_on:
       redis:
         condition: service_healthy
@@ -31,14 +39,43 @@ services:
       --max-requests 5000
     expose:
       - "8002"
+
     networks:
-      - proxy
+      - app-net
+
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',8002)); s.close()\""]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 15s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+
+    depends_on:
+      app:
+        condition: service_healthy
+
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /mnt/docker-nfs/trungtamtrienlam-media:/media:ro
+      - static-data:/app/static:ro
+
+    expose:
+      - "80"
+
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${DOCKER_NETWORK_NAME:-shared-prod-net}
+      - traefik.http.routers.cms-api.rule=Host(`cms-api.hongvan.net`)
+      - traefik.http.routers.cms-api.entrypoints=websecure
+      - traefik.http.routers.cms-api.tls=true
+      - traefik.http.services.cms-api.loadbalancer.server.port=80
+
+    networks:
+      - app-net
 
   redis:
     image: redis:7-alpine
@@ -48,4 +85,7 @@ services:
       timeout: 3s
       retries: 5   
     networks:
-      - proxy
+      - app-net
+
+volumes:
+  static-data:

@@ -1,6 +1,10 @@
+# syntax=docker/dockerfile:1.7
+
 ARG BUILD_ENV=dev
 
 FROM python:3.12-slim-bullseye AS build
+
+ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN apt-get update \
 && apt-get install --no-install-recommends build-essential apt-utils procps libgdal-dev gettext curl libffi-dev -y \
@@ -15,24 +19,23 @@ FROM build AS container-prod
 RUN pip install uwsgi ddtrace
 
 COPY app/. .
-COPY app/. .
-COPY .env.production .env
 
 RUN poetry install --only main --no-root \
-&& poetry run python manage.py compilemessages \
-&& rm .env \
+&& chmod +x /app/entrypoint.sh \
 && rm -rf /root/.cache/pip/
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
 # dev target
 FROM build AS container-dev
 
 COPY app/. .
 
-RUN poetry install --no-root \
+RUN --mount=type=bind,source=.env.local,target=/app/.env.local,readonly \
+poetry install --no-root \
 && poetry run python manage.py compilemessages \
-&& poetry run python manage.py collectstatic --clear \
-&& rm .env \
+&& poetry run python manage.py collectstatic --clear --noinput \
 && rm -rf /root/.cache/pip/
 
+
 FROM container-${BUILD_ENV}
-CMD ["/app/entrypoint.sh"]

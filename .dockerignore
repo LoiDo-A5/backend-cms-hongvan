@@ -30,9 +30,10 @@ build/
 .vscode/
 
 .env
-.env.development
-!.env.production
+.env.*
 !.env.local
+!.env.example
+!.env.*.example
 
 .DS_Store
 Thumbs.db

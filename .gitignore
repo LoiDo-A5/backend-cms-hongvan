@@ -119,15 +119,6 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -159,7 +150,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 media/
-.env
 
 .windsurf/
 !.windsurf/**
@@ -172,3 +162,8 @@ docs/
 
 openspec/
 !openspec/**
+
+.env
+.env.*
+!.env.example
+!.env.*.example
