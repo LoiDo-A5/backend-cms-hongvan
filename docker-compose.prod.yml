@@ -1,9 +1,12 @@
 name: cms-backend-prod
 
 networks:
-  app-net:
+  traefik-net:
     external: true
     name: ${DOCKER_NETWORK_NAME:-shared-prod-net}
+
+  backend:
+    driver: bridge
 
 services:
   app:
@@ -41,7 +44,7 @@ services:
       - "8002"
 
     networks:
-      - app-net
+      - backend
 
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',8002)); s.close()\""]
@@ -72,10 +75,12 @@ services:
       - traefik.http.routers.cms-api.rule=Host(`cms-api.hongvan.net`)
       - traefik.http.routers.cms-api.entrypoints=websecure
       - traefik.http.routers.cms-api.tls=true
+      - traefik.http.routers.cms-api.service=cms-api
       - traefik.http.services.cms-api.loadbalancer.server.port=80
 
     networks:
-      - app-net
+      - backend
+      - traefik-net
 
   redis:
     image: redis:7-alpine
@@ -83,9 +88,10 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 5   
+      retries: 5
+
     networks:
-      - app-net
+      - backend
 
 volumes:
   static-data:
